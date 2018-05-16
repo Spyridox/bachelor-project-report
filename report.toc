@@ -1,0 +1,21 @@
+\babel@toc {english}{}
+\contentsline {section}{\numberline {1}Introduction}{3}{section.0.1}
+\contentsline {subsection}{\numberline {1.1}Motivation}{3}{subsection.0.1.1}
+\contentsline {subsection}{\numberline {1.2}Goal}{3}{subsection.0.1.2}
+\contentsline {subsubsection}{Additional Goals}{3}{section*.3}
+\contentsline {section}{\numberline {2}State of the art}{3}{section.0.2}
+\contentsline {subsection}{\numberline {2.1}Planning problem}{3}{subsection.0.2.1}
+\contentsline {subsection}{\numberline {2.2}OptaPlanner}{3}{subsection.0.2.2}
+\contentsline {section}{\numberline {3}Approach}{3}{section.0.3}
+\contentsline {subsection}{\numberline {3.1}Technologies}{3}{subsection.0.3.1}
+\contentsline {subsection}{\numberline {3.2}Domain model}{4}{subsection.0.3.2}
+\contentsline {subsection}{\numberline {3.3}Constraints}{4}{subsection.0.3.3}
+\contentsline {subsection}{\numberline {3.4}Interface}{4}{subsection.0.3.4}
+\contentsline {subsection}{\numberline {3.5}Web application UI}{4}{subsection.0.3.5}
+\contentsline {section}{\numberline {4}Evaluation}{4}{section.0.4}
+\contentsline {subsection}{\numberline {4.1}Case study on real data}{4}{subsection.0.4.1}
+\contentsline {subsection}{\numberline {4.2}Examples results}{4}{subsection.0.4.2}
+\contentsline {section}{\numberline {5}Conclusion}{4}{section.0.5}
+\contentsline {subsection}{\numberline {5.1}Future work}{4}{subsection.0.5.1}
+\contentsline {section}{\numberline {6}Bibliography}{4}{section.0.6}
+\contentsline {section}{\numberline {7}Appendix}{4}{section.0.7}
