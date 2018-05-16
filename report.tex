@@ -1,0 +1,82 @@
+\documentclass[12pt, a4paper, english]{report}
+
+\usepackage{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{float}
+\usepackage{enumerate}
+\usepackage{enumitem}
+\usepackage{multicol}
+
+\usepackage{rotating}
+\usepackage[bookmarks,pdfencoding=unicode,colorlinks=true,citecolor=blue,linkcolor=black,urlcolor=blue]{hyperref}
+\usepackage[normalem]{ulem}			% package for strikethrough
+\newcommand{\strike}[1]{\sout{#1}}	% strikethrough
+\usepackage{lipsum}
+\graphicspath{{img/}}
+
+%\renewcommand{\familydefault}{\sfdefault}
+\renewcommand{\thesection}{\arabic{section}} % section numbers like [1..]
+
+\begin{document}
+
+\begin{titlepage}
+\begin{center}
+~\\[2cm]
+\includegraphics[width=0.5\textwidth]{logo}\\[3.5cm]
+\hrule height 1pt
+\vspace{5mm}
+{\Huge University timetable scheduling}
+\vspace{3mm}
+\hrule height 1pt
+\vspace{1cm}
+{\Large Bachelor Project Report}\\[3mm]
+{\Large Aron Fiechter}\\[3mm]
+{\Large 2018}\\[3.5cm]
+{\large Advisors: Michele Lanza, Andrea Mocci, Luca Ponzanelli}
+\end{center}
+\end{titlepage}
+
+\section*{Abstract}
+\begin{itemize}[label=\(\triangleright\)]
+\item Context: Creating and managing timetables of courses is an issue for many institutions because of various constraints that need to be respected in the planning. 
+\item Problem: This is in fact also a problem for the dean's office of Faculty of Informatics at USI, which currently creates timetables manually.
+\item Solution: As a solution, this process can be automated using state of the art tools to solve planning problems.
+\item Teaser: In this bachelor project I [we? passive?] design a web application (a module of the MyUSI platform) that allows to automatically create timetables given a set of constraints, and also to customize proposed solutions and visualize personalised schedules.
+\end{itemize}
+\section{Introduction}
+\subsection{Motivation}
+Creating a timetable is an issue for many institutions because of the various constraints that might need to be respected, such as different room sizes, instructor availability, elective courses, different frequency of courses.
+For example, this is a problem for the Faculty of Informatics at USI as well: the Atelier courses need to be placed in the afternoons, there are three rooms that can contain 60 people and four that can contain 30 people, there are different elective courses, and not all professors are available everyday.
+
+\subsection{Goal}
+The goal of this project is to create a web application (a module of the MyUSI platform) that allows to automatically create timetables given a set of constraints, and also customize proposed solutions; the resulting calendars should also be available to single students in the form of semester schedules, or personalised schedules in the case of elective courses and courses from different years.
+
+\subsubsection{Additional Goals}
+Once the basic system is implemented, possible extensions include managing timetables of the other faculties, adding single non-lecture events to schedules (such as seminars, talks), visualising statistical information about room usage.
+
+\subsection{Technologies}
+The web application will use Scala on the server side, OptaPlanner\footnote{https://www.optaplanner.org/} to solve the optimization problem, and Polymer 2.4 on the client side.
+
+\section{State of the art}
+\subsection{Planning problem}
+\subsection{OptaPlanner}
+
+\section{Approach}
+\subsection{Domain model}
+\subsection{Constraints}
+\subsection{Interface}
+\subsection{Web application UI}
+
+\section{Evaluation}
+\subsection{Case study on real data}
+\subsection{Examples results}
+
+\section{Conclusion}
+\subsection{Foo}
+
+\section{Bibliography}
+\section{Appendix}
+
+\end{document}
