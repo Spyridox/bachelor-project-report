@@ -16,6 +16,10 @@
 \usepackage{lipsum}
 \graphicspath{{img/}}
 
+% Basic formatting
+\setlength{\parindent}{0em}
+\newcommand{\ppar}{\par\medskip}
+
 %\renewcommand{\familydefault}{\sfdefault}
 \renewcommand{\thesection}{\arabic{section}} % section numbers like [1..]
 
@@ -40,13 +44,16 @@
 
 \tableofcontents
 \newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Abstract}
-\begin{itemize}[label=\(\triangleright\)]
-\item Context: Creating and managing timetables of courses is an issue for many institutions because of various constraints that need to be respected in the planning. 
-\item Problem: This is in fact also a problem for the dean's office of Faculty of Informatics at USI, which currently creates timetables manually.
-\item Solution: As a solution, this process can be automated using state of the art tools to solve planning problems.
-\item Teaser: In this bachelor project I [we? passive?] design a web application (a module of the MyUSI platform) that allows to automatically create timetables given a set of constraints, and also to customize proposed solutions and visualize personalised schedules.
-\end{itemize}
+Creating and managing timetables of courses is an issue for many institutions because of the various constraints that need to be respected in the planning.
+This is also a problem for the Dean's office of the Faculty of Informatics at USI, which currently creates timetables manually.
+Automating this process by means of state of the art tools to solve planning problems can increase productivity.
+In this bachelor project report we describe the design and implementation of a web application that offers an automated timetable creator wrapped in a user friendly web interface.
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
 \subsection{Motivation}
 Creating a timetable is an issue for many institutions because of the various constraints that might need to be respected, such as different room sizes, instructor availability, elective courses, different frequency of courses.
@@ -58,27 +65,36 @@ The goal of this project is to create a web application (a module of the MyUSI p
 \subsubsection{Additional Goals}
 Once the basic system is implemented, possible extensions include managing timetables of the other faculties, adding single non-lecture events to schedules (such as seminars, talks), visualising statistical information about room usage.
 
-\subsection{Technologies}
-The web application will use Scala on the server side, OptaPlanner\footnote{https://www.optaplanner.org/} to solve the optimization problem, and Polymer 2.4 on the client side.
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{State of the art}
 \subsection{Planning problem}
 \subsection{OptaPlanner}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Approach}
+\subsection{Technologies}
+The core solver implementation makes use of a state of the art library for solving planning problems called OptaPlanner\footnote{https://www.optaplanner.org/}. This tool requires the user to define a problem domain model, choose algorithms to use in the solving and ???.\par
+The server side of the web application is implemented in Scala.\par
+The client side uses Polymer 2.4 with TypeScript.
+
 \subsection{Domain model}
 \subsection{Constraints}
 \subsection{Interface}
 \subsection{Web application UI}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Evaluation}
 \subsection{Case study on real data}
 \subsection{Examples results}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusion}
-\subsection{Foo}
+\subsection{Future work}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Bibliography}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Appendix}
 
 \end{document}
