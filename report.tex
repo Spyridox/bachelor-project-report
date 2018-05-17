@@ -21,7 +21,7 @@
 \newcommand{\ppar}{\par\medskip}
 
 %\renewcommand{\familydefault}{\sfdefault}
-\renewcommand{\thesection}{\arabic{section}} % section numbers like [1..]
+%\renewcommand{\thesection}{\arabic{section}} % section numbers like [1..]
 
 \begin{document}
 
@@ -46,7 +46,7 @@
 \newpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section*{Abstract}
+\chapter*{Abstract}
 Creating and managing timetables of courses is an issue for many institutions because of the various constraints that need to be respected in the planning.
 This is also a problem for the Dean's office of the Faculty of Informatics at USI, which currently creates timetables manually.
 Automating this process by means of state of the art tools to solve planning problems can increase productivity.
@@ -54,47 +54,47 @@ In this bachelor project report we describe the design and implementation of a w
 
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Introduction}
-\subsection{Motivation}
+\chapter{Introduction}
+\section{Motivation}
 Creating a timetable is an issue for many institutions because of the various constraints that might need to be respected, such as different room sizes, instructor availability, elective courses, different frequency of courses.
 For example, this is a problem for the Faculty of Informatics at USI as well: the Atelier courses need to be placed in the afternoons, there are three rooms that can contain 60 people and four that can contain 30 people, there are different elective courses, and not all professors are available everyday.
 
-\subsection{Goal}
+\section{Goal}
 The goal of this project is to create a web application (a module of the MyUSI platform) that allows to automatically create timetables given a set of constraints, and also customize proposed solutions; the resulting calendars should also be available to single students in the form of semester schedules, or personalised schedules in the case of elective courses and courses from different years.
 
 \subsubsection{Additional Goals}
 Once the basic system is implemented, possible extensions include managing timetables of the other faculties, adding single non-lecture events to schedules (such as seminars, talks), visualising statistical information about room usage.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{State of the art}
-\subsection{Planning problem}
-\subsection{OptaPlanner}
+\chapter{State of the art}
+\section{Planning problem}
+\section{OptaPlanner}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Approach}
-\subsection{Technologies}
+\chapter{Approach}
+\section{Technologies}
 The core solver implementation makes use of a state of the art library for solving planning problems called OptaPlanner\footnote{https://www.optaplanner.org/}. This tool requires the user to define a problem domain model, choose algorithms to use in the solving and ???.\par
 The server side of the web application is implemented in Scala.\par
 The client side uses Polymer 2.4 with TypeScript.
 
-\subsection{Domain model}
-\subsection{Constraints}
-\subsection{Interface}
-\subsection{Web application UI}
+\section{Domain model}
+\section{Constraints}
+\section{Interface}
+\section{Web application UI}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Evaluation}
-\subsection{Case study on real data}
-\subsection{Examples results}
+\chapter{Evaluation}
+\section{Case study on real data}
+\section{Examples results}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Conclusion}
-\subsection{Future work}
+\chapter{Conclusion}
+\section{Future work}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Bibliography}
+\chapter{Bibliography}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Appendix}
+\chapter{Appendix}
 
 \end{document}
