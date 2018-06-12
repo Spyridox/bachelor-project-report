@@ -20,6 +20,7 @@
 \setlength{\parindent}{0em}
 \newcommand{\ppar}{\par\medskip}
 
+\def\bullet{\(\triangleright\)}
 %\renewcommand{\familydefault}{\sfdefault}
 %\renewcommand{\thesection}{\arabic{section}} % section numbers like [1..]
 
@@ -38,7 +39,8 @@
 {\Large Bachelor Project Report}\\[3mm]
 {\Large Aron Fiechter}\\[3mm]
 {\Large 2018}\\[3.5cm]
-{\large Advisors: Michele Lanza, Andrea Mocci, Luca Ponzanelli}
+{\large Advisor: Prof. Dr. Michele Lanza}\\[3mm]
+{\large Assistants: Dr. Andrea Mocci, Dr. Luca Ponzanelli}
 \end{center}
 \end{titlepage}
 
@@ -46,55 +48,136 @@
 \newpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter*{Abstract}
 Creating and managing timetables of courses is an issue for many institutions because of the various constraints that need to be respected in the planning.
-This is an even harder problem if the data needed to describe the planning problem and its constraints is not well curated and stored in several different places, situation that often leads to a long and tedious manual work in creating the timetables.
+This is an even harder problem if the data needed to describe the planning problem and its constraints is not well curated and stored in several different places, a situation that often leads to a long and tedious manual work in creating the timetables.
 In this project, we automate the process by means of state of the art tools to solve planning problems.
 We describe the design and implementation of a web application that offers an automated timetable creator wrapped in a user friendly web interface.
 
 \newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Introduction}
+%_______________________________________________________________________________
 \section{Motivation}
-Creating a timetable is an issue for many institutions because of the various constraints that might need to be respected, such as different room sizes, instructor availability, elective courses, different frequency of courses.
-For example, this is a problem for the Faculty of Informatics at USI as well: the Atelier courses need to be placed in the afternoons, there are three rooms that can contain 60 people and four that can contain 30 people, there are different elective courses, and not all professors are available everyday.
+Creating a school timetable is a difficult problem because of the various constraints that need to be respected, such as different room sizes, instructor availability, elective courses, and different frequency of courses.\par
+Moreover, a timetable created for a specific academic year might be partially or totally unusable the next year, because of changes in the program (e.g. a course is cancelled or moved to a different semester) or in the constraints data. This fact requires many institutions to recreate a new timetable from scratch every year.\par
+This task is even harder if the data for the courses, rooms and all the constraints is not curated and it is stored in separate and unrelated locations. Even worse, some constraints (such as instructor availability) might arise during planning, making the whole process even more tedious, requiring further (manual) work.\par
+Once a viable schedule is created, it is often necessary to change some details, for example by moving some lectures to different periods or different rooms. This could however violate constraints, and checking this manually, while not very hard, still takes some time, and might require moving other lectures to accommodate the initial change.
 
+%_______________________________________________________________________________
+\section{Problem definition}
+School timetabling is an NP hard planning problem. It is defined according to the existing definition by the {International Timetabling Competition}\footnote{\url{http://www.cs.qub.ac.uk/itc2007/curriculmcourse/course\_curriculm\_index.htm}}. The problem consists in scheduling a set of lectures on a weekly timetable. A single lecture can vary on two variables, which are period (identifying a specific slot during the week) and room.\par
+The search space is huge; we can calculate it using a simple formula\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-docs/html\_single/index.html\#searchSpaceSize}}: %TODO: How can I break it into two lines?
+\[
+	(p \times r)^l
+\]
+where \(p\) is the number of possible periods on the weekly timetable, \(r\) is the number of available rooms and \(l\) is the number of lectures that need to be scheduled.\par
+For example, take the Bachelor of Informatics at USI Lugano, which (at the time of writing) entails 14 courses, each with a specific number of lectures (calculated with respect to the ECTS weight). The total number of lectures of all courses is 70; the Faculty of Informatics has 7 rooms available, and a school week is of 40 periods (5 days, each with 8 time slots). We have:
+\[
+	(p \times r)^l = (40\cdot7)^{70} = 280^{70} \approx 2\cdot10^{171}
+\]
+Even with constraints in place, the search space remains very large. The search space contains all possible solutions, including the optimal solution, which is not necessarily feasible. There might be no feasible solutions: Consider the case of scheduling two lectures over one single possible period, in one single available room. The only solution is to schedule both lectures in the same room during that single period, which of course is not a feasible solution.
+
+%_______________________________________________________________________________
 \section{Goal}
-The goal of this project is to create a web application (a module of the MyUSI platform) that allows to automatically create timetables given a set of constraints, and also customize proposed solutions; the resulting calendars should also be available to single students in the form of semester schedules, or personalised schedules in the case of elective courses and courses from different years.
+The goal of this project is to create a web application that automates the process of creating school timetables.\par
+The web application is an interface to a constraint solver, which lives on the back end; given the problem data and a set of constraints, the solver computes a good solution and returns it as a list of lectures. The solution is proposed to the user, which can then customize it by moving lectures to preferred times or rooms and locking them in place. The customized solution can then be fed back to the solver which can refine it while keeping the locked lectures in place.
 
-\subsubsection{Additional Goals}
-Once the basic system is implemented, possible extensions include managing timetables of the other faculties, adding single non-lecture events to schedules (such as seminars, talks), visualising statistical information about room usage.
+%_______________________________________________________________________________
+\section{Approach}
+The solver, which is the core of the application, has been developed using OptaPlanner\footnote{\url{https://www.optaplanner.org/}}, a state of the art constraint solver which provides many optimization algorithms to solve planning problems.\par
+The interface to the solver is a server written in Scala\footnote{\url{https://www.scala-lang.org/}}, which exposes a GraphQL\footnote{\url{https://graphql.org/}} API.\par
+The front-end application is implemented in {Polymer 2.x}\footnote{\url{https://www.polymer-project.org/}} and Typescript\footnote{\url{https://www.typescriptlang.org/}}, and uses FullCalendar\footnote{\url{https://fullcalendar.io/}} to visualize and manage timetables.
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{State of the art}
+
+%_______________________________________________________________________________
 \section{Planning problem}
+The timetable scheduling problem aims to arrange a set of lectures in a weekly schedule with the goal of minimizing conflicts. The problem instance is defined by the following:
+\begin{itemize}[label=\bullet]
+\item list of courses: each course has a name, a list of instructors who teach the course, a list of semesters the course is taught in, the number of lectures the course entails, %TODO is "entails" the correct term?
+the minimum number of days these lectures should be spread out on, and the number of students registered for the course
+\item list of periods: each period is defined by a day (usually between Monday and Friday) and a time slot during the day (e.g. in the range 0-7, with four slots in the morning and four in the afternoon)
+\item list of unavailable periods: each unavailable periods points to a course and to a period, indicating that the course cannot have any lecture in the specific period
+\item list of rooms: each room has a name and a capacity
+\end{itemize}
+
+A solution is a list of lectures, each with an assigned room and a period, representing a weekly occurrence of a course in the schedule. Each solution has a score, which is calculated according to set weights related to the constraints. The score is separated in two parts (or levels): a hard score and a soft score; if a solution \(A\) has a worse hard score than another solution \(B\), then \(A\) is worse than \(B\), regardless of what the soft scores are. The hard score relates to hard constraints, while the soft score relates to soft constraints.\par
+Hard constraints usually model physical limitations; in our case there are five:
+\begin{itemize}[label=\bullet]
+\item instructor conflict: An instructor must not have two lectures in the same period
+\item semester conflict: A semester must not have two lectures in the same period
+\item course conflict: A course cannot have two lectures in the same period
+\item room occupancy: two lectures must not be in the same room in the same period.
+\item room capacity: A room capacity should not be less than the number of students in the course
+\item unavailable period (specified per dataset): A specific lecture must not be assigned to a specific period
+\end{itemize}
+
+Soft constraints model limitations introduced by preference, which don't violate physical reality but which favourite 
+\begin{itemize}[label=\bullet]
+\item minimum working days: Lectures of the same course should be spread out into a minimum number of days
+\item semester compactness: Lectures belonging to the same curriculum should be adjacent to each other (so in consecutive periods)
+\item room stability: Lectures of the same course (and possibly even those of the same semester) should be assigned to the same room
+\item lecture pairs: Lectures of the same course should be scheduled in blocks of two
+\item daily workload: Every day should have a similar number of lectures (avoid days with few and full days)
+\item course weekly span: Courses with more than one minimum different days required should not have lectures on consecutive days
+\end{itemize}
+
+%_______________________________________________________________________________
 \section{OptaPlanner}
+OptaPlanner is a constraint solver
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Approach}
+
+%_______________________________________________________________________________
 \section{Technologies}
-The core solver implementation makes use of a state of the art library for solving planning problems called OptaPlanner\footnote{https://www.optaplanner.org/}. This tool requires the user to define a problem domain model, choose algorithms to use in the solving and ???.\par
+The core solver implementation makes use of a state of the art library for solving planning problems called OptaPlanner. This tool requires the user to define a problem domain model, choose algorithms to use in the solving and ???.\par
 The server side of the web application is implemented in Scala.\par
 The client side uses Polymer 2.4 with TypeScript.
 
+%_______________________________________________________________________________
 \section{Domain model}
+
+%_______________________________________________________________________________
 \section{Constraints}
+
+%_______________________________________________________________________________
 \section{Interface}
+
+%_______________________________________________________________________________
 \section{Web application UI}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Evaluation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Evaluation (maybe?)}
+
+%_______________________________________________________________________________
 \section{Case study on real data}
-\section{Examples results}
+
+%_______________________________________________________________________________
+\section{Example results}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion}
+
+%_______________________________________________________________________________
 \section{Future work}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Bibliography}
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Appendix}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Bibliography}
 
 \end{document}
