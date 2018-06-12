@@ -110,16 +110,18 @@ the minimum number of days these lectures should be spread out on, and the numbe
 
 A solution is a list of lectures, each with an assigned room and a period, representing a weekly occurrence of a course in the schedule. Each solution has a score, which is calculated according to set weights related to the constraints. The score is separated in two parts (or levels): a hard score and a soft score; if a solution \(A\) has a worse hard score than another solution \(B\), then \(A\) is worse than \(B\), regardless of what the soft scores are. The hard score relates to hard constraints, while the soft score relates to soft constraints.\par
 Hard constraints usually model physical limitations; in our case there are five:
-\begin{itemize}[label=\bullet]
-\item instructor conflict: An instructor must not have two lectures in the same period
-\item semester conflict: A semester must not have two lectures in the same period
-\item course conflict: A course cannot have two lectures in the same period
-\item room occupancy: two lectures must not be in the same room in the same period.
-\item room capacity: A room capacity should not be less than the number of students in the course
-\item unavailable period (specified per dataset): A specific lecture must not be assigned to a specific period
-\end{itemize}
+\begin{table}[h]
+\begin{tabular}{|p{4cm}|p{9cm}|}\hline
+Instructor conflict & An instructor must not have two lectures in the same period\\\hline
+Semester conflict   & A semester must not have two lectures in the same period\\\hline
+Course conflict     & A course cannot have two lectures in the same period\\\hline
+Room occupancy      & Two lectures must not be in the same room in the same period\\\hline
+Room capacity       & A room capacity should not be less than the number of students in the course\\\hline
+Unavailable period  & A specific lecture must not be assigned to a specific period\\\hline
+\end{tabular}
+\end{table}
 
-Soft constraints model limitations introduced by preference, which don't violate physical reality but which favourite 
+Soft constraints model limitations which don't violate physical reality but which satisfy specific preferences about how the solution should be:
 \begin{itemize}[label=\bullet]
 \item minimum working days: Lectures of the same course should be spread out into a minimum number of days
 \item semester compactness: Lectures belonging to the same curriculum should be adjacent to each other (so in consecutive periods)
