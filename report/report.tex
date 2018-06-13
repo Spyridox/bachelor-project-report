@@ -8,6 +8,7 @@
 \usepackage{enumerate}
 \usepackage{enumitem}
 \usepackage{multicol}
+\usepackage{multirow}
 \usepackage{cite}
 \usepackage{appendix}
 \usepackage{tabularx}
@@ -153,7 +154,7 @@ The search space is huge; we can calculate it using a simple formula\footnote{\u
 	(p \times r)^l
 \]
 where \(p\) is the number of possible periods on the weekly timetable, \(r\) is the number of available rooms and \(l\) is the number of lectures that need to be scheduled.\par
-For example, take the Bachelor of Informatics at USI Lugano, which (at the time of writing) entails 14 courses, each with a specific number of lectures (calculated with respect to the ECTS weight). The total number of lectures of all courses is 70; the Faculty of Informatics has 7 rooms available, and a school week is of 40 periods (5 days, each with 8 time slots). We have:
+For example, take the spring semester of the Bachelor of Informatics at USI Lugano, which (at the time of writing) entails 14 courses, each with a specific number of lectures (calculated with respect to the ECTS weight). The total number of lectures of all courses is 70; the Faculty of Informatics has 7 rooms available, and a school week is of 40 periods (5 days, each with 8 time slots). We have:
 \[
 	(p \times r)^l = (40\cdot7)^{70} = 280^{70} \approx 2\cdot10^{171}
 \]
@@ -168,43 +169,62 @@ Given the problem data and a set of constraints, the solver computes a good solu
 %_______________________________________________________________________________
 \section{Approach}
 The solver, which is the core of the application, has been developed using OptaPlanner\footnote{\url{https://www.optaplanner.org/}}, a state of the art constraint solver which provides many optimization algorithms to solve planning problems.\par
-The interface to the solver is a server written in Scala\footnote{\url{https://www.scala-lang.org/}}, which exposes a GraphQL\footnote{\url{https://graphql.org/}} API.\par
-The front-end application is implemented in {Polymer 2.x}\footnote{\url{https://www.polymer-project.org/}} and Typescript\footnote{\url{https://www.typescriptlang.org/}}, and uses FullCalendar\footnote{\url{https://fullcalendar.io/}} to visualize and manage timetables.
+The interface to the solver, that is the back end of the application, is a server written in Scala\footnote{\url{https://www.scala-lang.org/}}, which exposes a GraphQL\footnote{\url{https://graphql.org/}} API.\par
+The front-end application is implemented in {Polymer 2.x}\footnote{\url{https://www.polymer-project.org/}} and Typescript\footnote{\url{https://www.typescriptlang.org/}}, and uses FullCalendar\footnote{\url{https://fullcalendar.io/}}, a JavaScript event calendar, to visualize and manage timetables.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{State of the art}
 
-This chapter describes in more detail the planning problem (section \ref{sec:problem}) and explains on a high level how the chosen tool, OptaPlanner, can be used with this definition (section \ref{sec:optaplanner}).
+This chapter gives an overview of what it means to solve a planning problem  (Section \ref{sec:planning}) and explains on a high level how the chosen solver, OptaPlanner, can be used to define such a problem and solve it (Section \ref{sec:optaplanner}).
 
 %_______________________________________________________________________________
-\section{Planning problem\label{sec:problem}}
+\section{Planning problems\label{sec:planning}}
+A planning problem\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-docs/html\_single/index.html\#whatIsAPlanningProblem}} is 
+
+%_______________________________________________________________________________
+\section{OptaPlanner\label{sec:optaplanner}}
+OptaPlanner is a constraint solver which can solve planning problems (such as the ones described in Section \ref{sec:planning}) given a description of the solution of the problem together with a mechanism to compute its score. The solution contains a list of planning entities (in our case the lectures) with customizable variables. The solver optimizes the score of the solution by modifying the values of the variables. Finally, problem facts specify the constant aspects of each problem instance (e.g., courses, rooms).\par
+The library provides an detailed guide on how to implement a solver. The solver can be configured to choose different construction heuristics (such as First Fit, First Fit Decreasing, Cheapest Insertion, etc.) in the first phase of solving and different algorithms for the local search phase. Local search algorithms include Simulated Annealing, Tabu Search, and can be combined for increased efficacy.\par
+It is possible to add a filter class for the planning entities, which excludes some of the entities from planning (from being modified); in our case, this is perfect to exclude locked lectures during refinement.\par
+Other mechanisms are available, such as classes to assign a difficulty value to planning entities (so that harder entities can be initialised first during the construction heuristic phase) or to sort planning variables by weight.\par
+%For more information on OptaPlanner, see appendix \ref{appendix:optaplanner}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Approach}
+
+This chapter illustrates the main part of the approach, that is the implementation of the application. Section \ref{sec:problem} defines the course timetabling planning problem on a conceptual level. Section \ref{sec:technologies} gives an overview of the chosen technologies, explaining the architecture and the role of each part. Section \ref{sec:domain} describes the modelling of the problem domain to be used with the constraint solver, OptaPlanner. Section \ref{sec:constraints} examines how the constraints have been included in the score calculation. Section \ref{sec:solver} provides a brief description of the wrapper of the solver on the server side. Section \ref{sec:graphql} depicts the server endpoint interface that allows the client side to interact with the solver. Finally, section \ref{sec:polymer} describes the implementation of the web application demo.
+
+%_______________________________________________________________________________
+\section{Problem definition\label{sec:problem}}
 The timetable scheduling problem aims to arrange a set of lectures in a weekly schedule with the goal of minimizing conflicts. The problem is defined according to the existing definition by the {International Timetabling Competition}\footnote{\url{http://www.cs.qub.ac.uk/itc2007/curriculmcourse/course\_curriculm\_index.htm}}. Each problem instance consists of:
 \begin{itemize}[label=\bullet]
-\item a list of courses: each course has a name, a list of instructors who teach the course, a list of semesters the course is taught in, the number of lectures the course entails, %TODO is "entails" the correct term?
-the minimum number of days these lectures should be spread out on, and the number of students registered for the course
-\item a list of periods: each period is defined by a day (usually between Monday and Friday) and a time slot during the day (e.g. in the range 0-7, with four slots in the morning and four in the afternoon)
-\item a list of unavailable periods: each unavailable period points to a course and to a period, indicating that the course cannot have any lecture in that specific period
-\item a list of rooms: each room has a name and a capacity
+\item a list of courses: Each course has a name, a list of instructors who teach the course, a list of semesters the course is taught in, the number of lectures the course entails, %TODO is "entails" the correct term?
+the minimum number of days these lectures should be spread out on, and the number of students registered for the course.
+\item a list of periods: Each period is defined by a day of the week (usually between Monday and Friday) and a time slot during the day (e.g. in the range 0-7, with four slots of one hour in the morning and four in the afternoon).
+\item a list of unavailable periods: Each unavailable period points to a course and to a period, indicating that the course cannot have any lecture in that specific period.
+\item a list of rooms: Each room has a name and a capacity.
 \end{itemize}
 
-A solution is a list of lectures, each with an assigned room and a period, representing a weekly occurrence of a course in the schedule. Each solution has a score, which is calculated according to set weights related to the constraints. The score is separated in two parts (or levels): a hard score and a soft score; if a solution \(A\) has a worse hard score than another solution \(B\), then \(A\) is worse than \(B\), regardless of what the soft scores are. The hard score relates to hard constraints, while the soft score relates to soft constraints.\par
-Hard constraints usually model physical limitations; in our case there are five:
-\begin{table}[h]
+A solution consists of a list of lectures, each with an assigned room and a period, representing a weekly occurrence of a course in the schedule. Each solution has a score, which is calculated according to set weights related to the constraints. The score is separated in two parts (or levels): a hard score and a soft score. If a solution \(A\) has a worse hard score than another solution \(B\), then \(A\) is worse than \(B\), regardless of what the soft scores are. The hard score relates to hard constraints, while the soft score relates to soft constraints.\par
+Hard constraints usually model physical limitations; in our case there are five, and we list them in Table \ref{tab:hard}.
+\begin{table}[h!]
 \begin{tabularx}{\textwidth}{|>{\hsize=.6\hsize\linewidth=\hsize\RaggedRight}X|
 >{\hsize=1.4\hsize\linewidth=\hsize}X|}\hline
-Instructor conflict & An instructor must not have two lectures in the same period\\\hline
-Semester conflict   & A semester must not have two lectures in the same period\\\hline
-Course conflict     & A course cannot have two lectures in the same period\\\hline
-Room occupancy      & Two lectures must not be in the same room in the same period\\\hline
-Room capacity       & A room capacity should not be less than the number of students in the course\\\hline
-Unavailable period  & A specific lecture must not be assigned to a specific period\\\hline
+Instructor conflict & An instructor must not have two lectures in the same period.\\\hline
+Semester conflict   & A semester must not have two lectures in the same period.\\\hline
+Course conflict     & A course cannot have two lectures in the same period.\\\hline
+Room occupancy      & Two lectures must not be in the same room in the same period.\\\hline
+Room capacity       & A room capacity should not be less than the number of students in the course.\\\hline
+Unavailable period  & A specific lecture must not be assigned to a specific period.\\\hline
 \end{tabularx}
+\caption{Hard constraints \label{tab:hard}}
 \end{table}
 
-Soft constraints model limitations which do not violate physical reality but which satisfy specific preferences about how the solution should be:
-\begin{table}[h]
+Soft constraints model limitations which do not violate physical reality but which satisfy specific preferences about how the solution should be. Our model has four soft constraint, and we list them in Table \ref{tab:soft}.
+\begin{table}[h!]
 \begin{tabularx}{\textwidth}{|>{\hsize=.6\hsize\linewidth=\hsize\RaggedRight}X|
 >{\hsize=1.4\hsize\linewidth=\hsize}X|}\hline
 Minimum working days & Lectures of the same course should be spread out into a minimum number of days\\\hline
@@ -214,55 +234,42 @@ Lecture pairs        & Lectures of the same course should be scheduled in blocks
 %Daily workload       & Every day should have a similar number of lectures (avoid days with few and full days)\\\hline
 %Course weekly span   & Courses with more than one minimum different days required should not have lectures on consecutive days\\\hline
 \end{tabularx}
+\caption{Soft constraints \label{tab:soft}}
 \end{table}
-
-Each constraint has an associated value which influences the score. In our case, all values are negative, so the highest score possible is \cod{0hard/0soft}. The way constraints are associated with scores can vary: for example, if the room capacity constraint is violated, each student above the capacity could count as 1 point of penalty, or we could make each student count 2, or use a standard value of 10 points of penalty, regardless of how much the room is over capacity.
-
-%_______________________________________________________________________________
-\section{OptaPlanner\label{sec:optaplanner}}
-OptaPlanner is a constraint solver which can solve planning problems given a description of the solution of the problem together with a mechanism to compute its score. The solution contains a list of planning entities (in our case the lectures) with customizable variables. The solver optimizes the score of the solution by modifying the values of the variables. Finally, problem facts specify the constant aspects of each problem instance (e.g., courses, rooms).\par
-The library provides an detailed guide on how to implement a solver. The solver can be configured to choose different construction heuristics (the first phase of solving) and different algorithms for the local search phase.\par
-It is possible to add a filter class for the planning entities, which excludes some of the entities from planning (from being modified); in our case, this is perfect to exclude locked lectures during refinement.\par
-Other mechanisms are available, such as classes to assign a difficulty value to planning entities (so that harder entities can be initialised first during the construction heuristic phase) or to sort planning variables by weight.\par
-For more information on OptaPlanner, see appendix \ref{appendix:optaplanner}.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Approach}
-
-This chapter illustrates the main part of the project: the implementation of the application. Section \ref{sec:technologies} gives an overview of the chosen technologies, explaining the architecture and the role of each part. Section \ref{sec:domain} describes the modelling of the problem domain to be used with the constraint solver, OptaPlanner. Section \ref{sec:constraints} examines how the constraints have been included in the score calculation. Section \ref{sec:solver} provides a brief description of the wrapper of the solver on the server side. Section \ref{sec:graphql} depicts the server endpoint interface that allows the client side to interact with the solver. Finally, section \ref{sec:polymer} describes the implementation of the web application demo.
+%\newpage%TODO:REMOVE
+Each constraint has an associated value which influences the score. In our case, all values are negative, so the highest score possible is \cod{0hard/0soft}. The way constraints are associated with scores can vary. For example, if the room capacity constraint is violated, each student above the capacity could count as 1 point of penalty, or we could make each student count 2, or use a standard value of 10 points of penalty, regardless of how much the room is over capacity.
 
 %_______________________________________________________________________________
 \section{Technologies\label{sec:technologies}}
 The core solver implementation makes use of a state of the art library for solving planning problems called OptaPlanner.\par
-The server side of the web application is implemented in Scala (a relatively young multi-purpose programming language) using Akka HTTP\footnote{\url{https://doc.akka.io/docs/akka-http/current/}}. It exposes an interface to in-memory data and to the solver using GraphQL, which is a query language that allows the user to retrieve data with high precision using a single request. This GraphQL endpoint is also implemented in Scala using Sangria GraphQL\footnote{\url{http://sangria-graphql.org/}}.\par
+The server side of the web application is implemented in Scala, a relatively young general-purpose programming language, using Akka HTTP\footnote{\url{https://doc.akka.io/docs/akka-http/current/}}. It exposes an interface to in-memory data and to the solver using GraphQL, which is a query language that allows the user to retrieve data with high precision using a single request. GraphQL is an alternative to REST that allows the client to specify the structure of the requested data, avoiding the need for further requests. The GraphQL endpoint is also implemented in Scala using Sangria GraphQL\footnote{\url{http://sangria-graphql.org/}}.\par
 The client side is implemented as a Polymer 2.x application (with TypeScript instead of JavaScript), where Polymer is a library to build Web Components\footnote{\url{https://www.webcomponents.org/}}.
 
 %_______________________________________________________________________________
 \section{Domain model for OptaPlanner\label{sec:domain}}
 We modelled the problem domain according to what OptaPlanner expects.\par
-The implementation is done in Scala, although for some features we had to use Java syntax; it is similar to the existing Java implementation available in the \cod{curriculumcourse} OptaPlanner examples\footnote{\url{https://github.com/kiegroup/optaplanner/tree/master/optaplanner-examples}}\par
+The implementation is done in Scala, although for some features we had to use Java syntax; it is similar to the existing Java implementation available in the \cod{curriculumcourse} program available in the OptaPlanner examples\footnote{\url{https://github.com/kiegroup/optaplanner/tree/master/optaplanner-examples}}.\par
 The main solution class, called \cod{Schedule}, contains all the lists of all problem facts (\cod{Period}s, \cod{Day}s, \cod{TimeSlot}s, \cod{Semester}s, \cod{Instructor}s, \cod{Room}s, \cod{Course}s, \cod{UnavailablePeriod}s), the list of planning entities (\cod{Lecture}) and the score (\cod{HardSoftScore}).\par
 The \cod{Lecture} class implements a Planning Entity, which is what the solver can mutate in order to improve solutions. The two fields that a \cod{Lecture} can mutate of are \cod{period} and \cod{room} (of type \cod{Period} and \cod{Room}, respectively).\par
 However, if a the \cod{locked} field of the lecture is set to \cod{true}, the solver ignores that \cod{Lecture} and only varies the unlocked ones. The score still takes into account all lectures, regardless of their locked value. It is important to say that a \cod{Lecture} that is locked \emph{must} have a non-null value for both its \cod{room} and \cod{period}.\par
-The diagram (Figure \ref{fig:domainUML}) representing the problem shows the solution class (\cod{Schedule}) in green, the planning entity (\cod{Lecture}) in red and the problem facts in blue. Only the relevant fields are shown:\par
+The diagram (Figure \ref{fig:domainUML}) representing the problem shows the solution class (\cod{Schedule}) in green, the planning entity (\cod{Lecture}) in red and the problem facts in blue. Only the relevant fields are shown.\par
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{img/domainUML.pdf}
 \caption{Class diagram of the domain model\label{fig:domainUML}}
 \end{figure}
-To know more about the inner workings of OptaPlanner, see appendix \ref{appendix:optaplanner}.
+%To know more about the inner workings of OptaPlanner, see appendix \ref{appendix:optaplanner}.
 
 %_______________________________________________________________________________
 \section{Constraints\label{sec:constraints}}
-The constraints are of two kinds, hard constraints and soft constraints, as described in section \ref{sec:problem}.\par
+The constraints are of two kinds, hard constraints and soft constraints, as described in Section \ref{sec:problem}.\par
 As a rule, any solution that violates any hard constraint is unusable, since hard constraints model physical limitations (such as the impossibility for an instructor to teach two lectures at the same time).\par
 To compute the score we need to take into account all constraint violations, so we need to iterate over all lectures and combine them with data from courses, rooms and unavailable periods.\par
 A simple way to do this would be to accumulate constraint violations while iterating over all lectures combined with the other data. The problem with this approach is that the score needs to be calculated every time a new solution is created by the solver, i.e. many times per second, because the solver can mutate the solution very fast by just swapping two lectures or moving one single lecture.\par
 It makes much more sense, from an efficiency point of view,  to remember which constraint violations did not change, and to just recompute the score with respect to the moved lecture (or swapped lectures).\par
 To do this, we must rely heavily on maps, and the implementation can become very difficult to understand and to maintain.\par
-Fortunately, OptaPlanner supports Drools, which is an engine that can automatically perform incremental score calculation given some rules. Each constraint is described as one or more rules. An example is available in figure \ref{fig:rule}.\par
-For most constraints it was possible to use the existing rules implemented in the OptaPlanner example, while for some others we had to apply some changes (we transformed the room capacity constraint into a hard constraint) or write the rule from the ground up (for the lecture pairs constraint; see section \ref{sec:problem}).
+Fortunately, OptaPlanner supports Drools, which is an engine that can automatically perform incremental score calculation given some rules. Each constraint is described as one or more rules. An example of a rule is available in Figure \ref{fig:rule}.\par
+For most constraints it was possible to use the existing rules implemented in the OptaPlanner example, while for some others we had to apply some changes (we transformed the room capacity constraint into a hard constraint) or write the rule from the ground up (for the lecture pairs constraint; see Section \ref{sec:problem}).
 
 \begin{figure}[h]
 \centering
@@ -291,27 +298,84 @@ end
 
 %_______________________________________________________________________________
 \section{Solver architecture\label{sec:solver}}
-The 
+The solver (implemented in \cod{solver.SchedulerApp}) exposes a method \cod{solve(s: Schedule): Schedule} which expects a schedule with uninitialized lectures (no room or period assigned) or partially initialized lectures (if a lecture is locked, it \emph{must} have both a period and a room already assigned). Of course, the input data needs to be consistent: for example, no initialized lecture must be assigned to a room or a period that do not exist.\par
+The output is again a schedule, with all lectures assigned to a room and a period.\par
+Both input and output objects of type \cod{Schedule} refer to the \cod{domain} implementation used by the solver, which uses simple syntax often similar to Java.
 
 %_______________________________________________________________________________
 \section{Server and GraphQL API\label{sec:graphql}}
+As said, the solver lives on the back end, and it is available via a GraphQL endpoint. The server is implemented in Scala using Akka HTTP, and has one single endpoint: both \cod{/} and \cod{/graphql} are ways to access it.\par
+The server stores (during runtime, there is no persistence) all courses, buildings, rooms, as well as a map that stores created schedules by ID. The ID of a Schedule is computed based on the courses and rooms chosen for scheduling.\par
+All of this is stored as instances of Scala classes of the \cod{model} implementation, which are different from the classes used by the solver. The server in fact contains a class \cod{SchedulerRepo} which is responsible for the conversion between the two models when dealing with the solver.\par
+The GraphQL interface provides queries and mutations, and they are listed in Table \ref{tab:graphql}.
+\begin{table}[h]
+\begin{tabularx}{\textwidth}{|l|X|}\hline
+\multirow{2}{*}{\cod{query}} & \cod{buildings: [Building]} \\
+& \cod{rooms: [Room]} \\
+& \cod{courses: [Course]} \\
+& \cod{semesters: [Semester]} \\
+& \cod{plannerCourses: [Course]} \\
+& \cod{plannerRooms: [Room]} \\
+& \cod{plannerSchedule(id: Int): Schedule} \\
+& \cod{plannerSchedules: [Schedule]} \\\hline
+\multirow{2}{*}{\cod{mutation}} & \cod{createSchedule(name: String): Schedule} \\
+& \cod{refineSchedule(id: Int): Schedule} \\
+& \cod{editLecture(id: Int, } \\
+& \qquad \cod{lectureArg: LectureInput): Lecture} \\\hline
+\end{tabularx}
+\caption{GraphQL Schema exposed by the endpoint\label{tab:graphql}}
+\end{table}
 
 %_______________________________________________________________________________
 \section{Web application UI\label{sec:polymer}}
+We chose Polymer as a library to develop the front-end interface to use the solver.\par
+The main page features two tabs: the first tab shows a list of buildings, and the plan was to show calendars with real events for every room once a building is opened. This idea was put aside to focus on implementing the functionalities of the second tab, which is the schedule creator.\par
+The schedule creator shows a list of created schedules, starting with none. An ``add'' button on the bottom right can be used to open a page that shows the list of courses and rooms selected for scheduling. As of writing, it is not possible to change these selections, so it is possible to create just one of schedule, the one that uses the rooms and courses that are pre selected at server startup (for demonstrative purposes).\par
+Creating a schedule is simple: it is sufficient to enter a name and click ``create''.\par
+The home of the schedule creator can be seen in figure \ref{fig:creator}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{home.png}
+\caption{Home of the planner \label{fig:creator}}
+\end{figure}
+
+By clicking on a schedule, a new view opens; on this view, the schedule is shown as a weekly timetable, separated by semester. If the schedule is the direct result of the solver, it is not possible to refine it, because the result would just be the same (see Figure \ref{fig:refined}). We call such a schedule ``refined''.\par
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{refined.png}
+\caption{A refined schedule \label{fig:refined}}
+\end{figure}
+
+However, if it was modified, for example if a some lectures were moved and locked, it is possible to click the ``refine'' button (see Figure \ref{fig:notrefined}). This starts the solver on the back end using the already existing schedule; only locked lectures are preserved in place.\par
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{not_refined.png}
+\caption{A non refined schedule \label{fig:notrefined}}
+\end{figure}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion}
+
+
+%_______________________________________________________________________________
+\section{Evaluation}
+During development, we tested the solver using as problem instance the data for the spring semester of the year 2018 of the Bachelor program of the Faculty of Informatics at USI\footnote{\url{http://www.inf.usi.ch}}. The problem instance features 3 semesters, with a total of 14 courses. The number of lectures is 70, and they need to be scheduled on a school week which counts 40 periods (8 time slots per day). As available rooms we used all the rooms of the Informatics Building, so 8 rooms, although realistically.
 
 %_______________________________________________________________________________
 \section{Future work}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\appendix
-\chapter{OptaPlanner\label{appendix:optaplanner}}
-\chapter{GraphQL\label{appendix:graphql}}
-This is the OptaPlanner appendix...
+%\appendix
+%\chapter{OptaPlanner\label{appendix:optaplanner}}
+%This is the OptaPlanner appendix...
+
+%\chapter{GraphQL\label{appendix:graphql}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
