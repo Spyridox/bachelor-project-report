@@ -10,6 +10,9 @@
 \usepackage{multicol}
 \usepackage{cite}
 \usepackage{appendix}
+\usepackage{tabularx}
+
+\usepackage{ragged2e}
 
 \usepackage{rotating}
 \usepackage[bookmarks,pdfencoding=unicode,colorlinks=true,citecolor=blue,linkcolor=black,urlcolor=blue]{hyperref}
@@ -21,6 +24,20 @@
 % Basic formatting
 \setlength{\parindent}{0em}
 \newcommand{\ppar}{\par\medskip}
+
+\usepackage{color}
+
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+
+\definecolor{commentGreen}{RGB}{128,127,41}
+\definecolor{stringGreen}{RGB}{0,127,38}
+\definecolor{keywordRed}{RGB}{151,0,11}
+\definecolor{typePurple}{RGB}{128,3,82}
+\definecolor{variableBlue}{RGB}{0,0,255}
+\definecolor{annotationRed}{RGB}{198,4,38}
+\definecolor{annotationBlue}{RGB}{32,21,223}
 
 % Code
 \usepackage[procnames]{listings}
@@ -52,6 +69,34 @@
 %    identifierstyle=\color{orange}		% identifiers colors
 }
 \newcommand{\cod}[1]{\lstinlineþ#1þ}
+
+% from https://tex.stackexchange.com/questions/79747/advanced-use-of-listings-package
+\lstdefinelanguage[drl]{Drools}{
+    sensitive=true,
+    keywordsprefix=\$,
+    alsoletter={:, },
+    morekeywords=[2]{long,int,boolean,double,float,enum},
+    morekeywords=[3]{declare,end,extends,from,insert,modify,not,new,no loop,query,retract,rule,salience,then,this,when, eval},
+    morekeywords=[4]{after,before,during,over window:length,over window:time,overlaps},
+    morekeywords=[5]{{no loop},over window:length,over window:time},
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    moredelim=[s][\color{annotationRed}\itshape]{@}{)},
+    moredelim=[s][\color{annotationBlue}\itshape]{@[}{]},
+    morestring=[b]",
+    morestring=[d]',
+%%% default style
+    basicstyle=\normalfont\ttfamily,
+    % identifierstyle=\normalfont,
+    commentstyle=\color{commentGreen}\itshape,
+    keywordstyle=\color{keywordRed}\bfseries,
+    keywordstyle=[1]\color{variableBlue}\itshape,
+    keywordstyle=[2]\color{typePurple}\bfseries,
+    keywordstyle=[3]\color{keywordRed}\bfseries,
+    keywordstyle=[4]\color{keywordRed}\bfseries,
+    keywordstyle=[5]\color{stringGreen}\bfseries,
+    stringstyle=\color{stringGreen}
+}[comments,keywords,strings]
 
 \def\bullet{\(\triangleright\)}
 %\renewcommand{\familydefault}{\sfdefault}
@@ -103,7 +148,7 @@ Once a viable schedule is created, it is often necessary to change some details,
 %_______________________________________________________________________________
 \section{Problem definition}
 School timetabling is an NP hard planning problem\cite{CLRS}. The problem consists in scheduling a set of lectures on a weekly timetable. A single lecture can vary on two variables, which are period (identifying a specific slot during the week) and room.\par
-The search space is huge; we can calculate it using a simple formula\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-docs/html\_single/index.html\#searchSpaceSize}}: %TODO: How can I break it into two lines?
+The search space is huge; we can calculate it using a simple formula\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-docs/html\_single/index.html\#searchSpaceSize}}:
 \[
 	(p \times r)^l
 \]
@@ -112,7 +157,7 @@ For example, take the Bachelor of Informatics at USI Lugano, which (at the time 
 \[
 	(p \times r)^l = (40\cdot7)^{70} = 280^{70} \approx 2\cdot10^{171}
 \]
-Even with constraints in place, the search space remains very large. The search space contains all possible solutions, including the optimal solution, which is not necessarily feasible. There might be no feasible solutions: Consider the case of scheduling two lectures over one single possible period, in one single available room. The only solution is to schedule both lectures in the same room during that single period, which of course is not a feasible solution.
+Even with constraints in place, the search space remains very large. The search space contains all possible solutions, including the optimal solution, which is not necessarily feasible\footnote{according to the definitions in the OptaPlanner documentation available at \url{http://docs.optaplanner.org/latest/optaplanner-docs/html\_single/index.html\#aPlanningProblemHasAHugeSearchSpace}}. There might be no feasible solutions: Consider the case of scheduling two lectures over one single possible period, in one single available room. The only solution is to schedule both lectures in the same room during that single period, which of course is not a feasible solution.
 
 %_______________________________________________________________________________
 \section{Goal}
@@ -131,6 +176,8 @@ The front-end application is implemented in {Polymer 2.x}\footnote{\url{https://
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{State of the art}
 
+This chapter describes in more detail the planning problem (section \ref{sec:problem}) and explains on a high level how the chosen tool, OptaPlanner, can be used with this definition (section \ref{sec:optaplanner}).
+
 %_______________________________________________________________________________
 \section{Planning problem\label{sec:problem}}
 The timetable scheduling problem aims to arrange a set of lectures in a weekly schedule with the goal of minimizing conflicts. The problem is defined according to the existing definition by the {International Timetabling Competition}\footnote{\url{http://www.cs.qub.ac.uk/itc2007/curriculmcourse/course\_curriculm\_index.htm}}. Each problem instance consists of:
@@ -145,52 +192,56 @@ the minimum number of days these lectures should be spread out on, and the numbe
 A solution is a list of lectures, each with an assigned room and a period, representing a weekly occurrence of a course in the schedule. Each solution has a score, which is calculated according to set weights related to the constraints. The score is separated in two parts (or levels): a hard score and a soft score; if a solution \(A\) has a worse hard score than another solution \(B\), then \(A\) is worse than \(B\), regardless of what the soft scores are. The hard score relates to hard constraints, while the soft score relates to soft constraints.\par
 Hard constraints usually model physical limitations; in our case there are five:
 \begin{table}[h]
-\begin{tabular}{|p{4cm}|p{9cm}|}\hline
+\begin{tabularx}{\textwidth}{|>{\hsize=.6\hsize\linewidth=\hsize\RaggedRight}X|
+>{\hsize=1.4\hsize\linewidth=\hsize}X|}\hline
 Instructor conflict & An instructor must not have two lectures in the same period\\\hline
 Semester conflict   & A semester must not have two lectures in the same period\\\hline
 Course conflict     & A course cannot have two lectures in the same period\\\hline
 Room occupancy      & Two lectures must not be in the same room in the same period\\\hline
 Room capacity       & A room capacity should not be less than the number of students in the course\\\hline
 Unavailable period  & A specific lecture must not be assigned to a specific period\\\hline
-\end{tabular}
+\end{tabularx}
 \end{table}
 
-Soft constraints model limitations which don't violate physical reality but which satisfy specific preferences about how the solution should be:
+Soft constraints model limitations which do not violate physical reality but which satisfy specific preferences about how the solution should be:
 \begin{table}[h]
-\begin{tabular}{|p{4cm}|p{9cm}|}\hline
+\begin{tabularx}{\textwidth}{|>{\hsize=.6\hsize\linewidth=\hsize\RaggedRight}X|
+>{\hsize=1.4\hsize\linewidth=\hsize}X|}\hline
 Minimum working days & Lectures of the same course should be spread out into a minimum number of days\\\hline
-Semester compactness & Lectures belonging to the same curriculum should be adjacent to each other (so in consecutive periods)\\\hline
+Semester compactness & Lectures belonging to the same curriculum should be adjacent to each other (so in consecutive periods if they are on the same day)\\\hline
 Room stability       & Lectures of the same course (and possibly even those of the same semester) should be assigned to the same room\\\hline
 Lecture pairs        & Lectures of the same course should be scheduled in blocks of two\\\hline
-Daily workload       & Every day should have a similar number of lectures (avoid days with few and full days)\\\hline
-Course weekly span   & Courses with more than one minimum different days required should not have lectures on consecutive days\\\hline
-\end{tabular}
+%Daily workload       & Every day should have a similar number of lectures (avoid days with few and full days)\\\hline
+%Course weekly span   & Courses with more than one minimum different days required should not have lectures on consecutive days\\\hline
+\end{tabularx}
 \end{table}
 
 Each constraint has an associated value which influences the score. In our case, all values are negative, so the highest score possible is \cod{0hard/0soft}. The way constraints are associated with scores can vary: for example, if the room capacity constraint is violated, each student above the capacity could count as 1 point of penalty, or we could make each student count 2, or use a standard value of 10 points of penalty, regardless of how much the room is over capacity.
 
 %_______________________________________________________________________________
-\section{OptaPlanner}
+\section{OptaPlanner\label{sec:optaplanner}}
 OptaPlanner is a constraint solver which can solve planning problems given a description of the solution of the problem together with a mechanism to compute its score. The solution contains a list of planning entities (in our case the lectures) with customizable variables. The solver optimizes the score of the solution by modifying the values of the variables. Finally, problem facts specify the constant aspects of each problem instance (e.g., courses, rooms).\par
 The library provides an detailed guide on how to implement a solver. The solver can be configured to choose different construction heuristics (the first phase of solving) and different algorithms for the local search phase.\par
 It is possible to add a filter class for the planning entities, which excludes some of the entities from planning (from being modified); in our case, this is perfect to exclude locked lectures during refinement.\par
-Other mechanisms are available, such as classes to assign a difficulty value to planning entities (so that harder entities can be initialised first during the construction heuristic phase) or to sort planning variables by weight.
-
+Other mechanisms are available, such as classes to assign a difficulty value to planning entities (so that harder entities can be initialised first during the construction heuristic phase) or to sort planning variables by weight.\par
+For more information on OptaPlanner, see appendix \ref{appendix:optaplanner}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Approach}
 
+This chapter illustrates the main part of the project: the implementation of the application. Section \ref{sec:technologies} gives an overview of the chosen technologies, explaining the architecture and the role of each part. Section \ref{sec:domain} describes the modelling of the problem domain to be used with the constraint solver, OptaPlanner. Section \ref{sec:constraints} examines how the constraints have been included in the score calculation. Section \ref{sec:solver} provides a brief description of the wrapper of the solver on the server side. Section \ref{sec:graphql} depicts the server endpoint interface that allows the client side to interact with the solver. Finally, section \ref{sec:polymer} describes the implementation of the web application demo.
+
 %_______________________________________________________________________________
-\section{Technologies}
-The core solver implementation makes use of a state of the art library for solving planning problems called OptaPlanner. Relevant sections for this are section \ref{sec:domain} and \ref{sec:constraints}.\par
-The server side of the web application is implemented in Scala using GraphQL, and is described in section \ref{sec:graphql}.\par
-The client side uses Polymer 2.x with TypeScript, and the implementation is described in section \ref{sec:web}.
+\section{Technologies\label{sec:technologies}}
+The core solver implementation makes use of a state of the art library for solving planning problems called OptaPlanner.\par
+The server side of the web application is implemented in Scala (a relatively young multi-purpose programming language) using Akka HTTP\footnote{\url{https://doc.akka.io/docs/akka-http/current/}}. It exposes an interface to in-memory data and to the solver using GraphQL, which is a query language that allows the user to retrieve data with high precision using a single request. This GraphQL endpoint is also implemented in Scala using Sangria GraphQL\footnote{\url{http://sangria-graphql.org/}}.\par
+The client side is implemented as a Polymer 2.x application (with TypeScript instead of JavaScript), where Polymer is a library to build Web Components\footnote{\url{https://www.webcomponents.org/}}.
 
 %_______________________________________________________________________________
 \section{Domain model for OptaPlanner\label{sec:domain}}
 We modelled the problem domain according to what OptaPlanner expects.\par
-The implementation is done in Scala, although for some features we had to use Java syntax.\par
+The implementation is done in Scala, although for some features we had to use Java syntax; it is similar to the existing Java implementation available in the \cod{curriculumcourse} OptaPlanner examples\footnote{\url{https://github.com/kiegroup/optaplanner/tree/master/optaplanner-examples}}\par
 The main solution class, called \cod{Schedule}, contains all the lists of all problem facts (\cod{Period}s, \cod{Day}s, \cod{TimeSlot}s, \cod{Semester}s, \cod{Instructor}s, \cod{Room}s, \cod{Course}s, \cod{UnavailablePeriod}s), the list of planning entities (\cod{Lecture}) and the score (\cod{HardSoftScore}).\par
 The \cod{Lecture} class implements a Planning Entity, which is what the solver can mutate in order to improve solutions. The two fields that a \cod{Lecture} can mutate of are \cod{period} and \cod{room} (of type \cod{Period} and \cod{Room}, respectively).\par
 However, if a the \cod{locked} field of the lecture is set to \cod{true}, the solver ignores that \cod{Lecture} and only varies the unlocked ones. The score still takes into account all lectures, regardless of their locked value. It is important to say that a \cod{Lecture} that is locked \emph{must} have a non-null value for both its \cod{room} and \cod{period}.\par
@@ -205,13 +256,48 @@ To know more about the inner workings of OptaPlanner, see appendix \ref{appendix
 %_______________________________________________________________________________
 \section{Constraints\label{sec:constraints}}
 The constraints are of two kinds, hard constraints and soft constraints, as described in section \ref{sec:problem}.\par
-As a rule, any solution that violates any hard constraint is unusable, since hard constraints model physical limitations (such as the impossibility for an instructor to teach two lectures at the same time).
+As a rule, any solution that violates any hard constraint is unusable, since hard constraints model physical limitations (such as the impossibility for an instructor to teach two lectures at the same time).\par
+To compute the score we need to take into account all constraint violations, so we need to iterate over all lectures and combine them with data from courses, rooms and unavailable periods.\par
+A simple way to do this would be to accumulate constraint violations while iterating over all lectures combined with the other data. The problem with this approach is that the score needs to be calculated every time a new solution is created by the solver, i.e. many times per second, because the solver can mutate the solution very fast by just swapping two lectures or moving one single lecture.\par
+It makes much more sense, from an efficiency point of view,  to remember which constraint violations did not change, and to just recompute the score with respect to the moved lecture (or swapped lectures).\par
+To do this, we must rely heavily on maps, and the implementation can become very difficult to understand and to maintain.\par
+Fortunately, OptaPlanner supports Drools, which is an engine that can automatically perform incremental score calculation given some rules. Each constraint is described as one or more rules. An example is available in figure \ref{fig:rule}.\par
+For most constraints it was possible to use the existing rules implemented in the OptaPlanner example, while for some others we had to apply some changes (we transformed the room capacity constraint into a hard constraint) or write the rule from the ground up (for the lecture pairs constraint; see section \ref{sec:problem}).
+
+\begin{figure}[h]
+\centering
+\begin{lstlisting}[language={[drl]Drools}]
+// Room capacity: A room's capacity should not be
+// less than the number of students in the course.
+// Each student above the capacity counts as 1 point
+// of penalty.
+rule "roomCapacity"
+	when
+    	$room : Room($capacity : capacity)
+	    Lecture(
+			room == $room,
+			course.studentSize > $capacity,
+			$studentSize : course.studentSize
+		)
+	then
+    	scoreHolder.addHardConstraintMatch(
+			kcontext,
+			($capacity - $studentSize)
+		);
+end
+\end{lstlisting}
+\caption{Rule that models the room capacity constraint\label{fig:rule}}
+\end{figure}
+
+%_______________________________________________________________________________
+\section{Solver architecture\label{sec:solver}}
+The 
 
 %_______________________________________________________________________________
 \section{Server and GraphQL API\label{sec:graphql}}
 
 %_______________________________________________________________________________
-\section{Web application UI\label{sec:web}}
+\section{Web application UI\label{sec:polymer}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

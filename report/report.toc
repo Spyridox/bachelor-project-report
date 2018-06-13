@@ -9,11 +9,12 @@
 \contentsline {section}{\numberline {2.2}OptaPlanner}{8}{section.2.2}
 \contentsline {chapter}{\numberline {3}Approach}{9}{chapter.3}
 \contentsline {section}{\numberline {3.1}Technologies}{9}{section.3.1}
-\contentsline {section}{\numberline {3.2}Domain model for OptaPlanner}{9}{section.3.2}
+\contentsline {section}{\numberline {3.2}Domain model for OptaPlanner}{10}{section.3.2}
 \contentsline {section}{\numberline {3.3}Constraints}{10}{section.3.3}
-\contentsline {section}{\numberline {3.4}Server and GraphQL API}{11}{section.3.4}
-\contentsline {section}{\numberline {3.5}Web application UI}{11}{section.3.5}
-\contentsline {chapter}{\numberline {4}Conclusion}{12}{chapter.4}
-\contentsline {section}{\numberline {4.1}Future work}{12}{section.4.1}
-\contentsline {chapter}{\numberline {A}OptaPlanner}{13}{appendix.A}
-\contentsline {chapter}{\numberline {B}GraphQL}{14}{appendix.B}
+\contentsline {section}{\numberline {3.4}Solver architecture}{12}{section.3.4}
+\contentsline {section}{\numberline {3.5}Server and GraphQL API}{12}{section.3.5}
+\contentsline {section}{\numberline {3.6}Web application UI}{12}{section.3.6}
+\contentsline {chapter}{\numberline {4}Conclusion}{13}{chapter.4}
+\contentsline {section}{\numberline {4.1}Future work}{13}{section.4.1}
+\contentsline {chapter}{\numberline {A}OptaPlanner}{14}{appendix.A}
+\contentsline {chapter}{\numberline {B}GraphQL}{15}{appendix.B}
