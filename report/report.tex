@@ -45,7 +45,7 @@
 \lstset{ %
 	aboveskip={-0.2\baselineskip},			% space before box
     backgroundcolor=\color{white},		% choose the background color
-    basicstyle=\ttfamily,				% the size of the code
+    basicstyle=\footnotesize\ttfamily,	% the size of the code
     breakatwhitespace=false,			% if automatic breaks happen at whitespace
     breaklines=true,					% sets automatic line breaking
 %    captionpos=b,						% sets the caption-position to bottom
@@ -147,7 +147,7 @@ This task is even harder if the data for the courses, rooms and all the constrai
 Once a viable schedule is created, it is often necessary to change some details, for example by moving some lectures to different periods or different rooms. This could however violate constraints, and checking this manually, while not very hard, still takes some time, and might require moving other lectures to accommodate the initial change.
 
 %_______________________________________________________________________________
-\section{Problem definition}
+\section{Problem}
 School timetabling is an NP hard planning problem\cite{CLRS}. The problem consists in scheduling a set of lectures on a weekly timetable. A single lecture can vary on two variables, which are period (identifying a specific slot during the week) and room.\par
 The search space is huge; we can calculate it using a simple formula\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-docs/html\_single/index.html\#searchSpaceSize}}:
 \[
@@ -181,7 +181,14 @@ This chapter gives an overview of what it means to solve a planning problem  (Se
 
 %_______________________________________________________________________________
 \section{Planning problems\label{sec:planning}}
-A planning problem\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-docs/html\_single/index.html\#whatIsAPlanningProblem}} is 
+A planning problem\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-docs/html_single/index.html\#whatIsAPlanningProblem}} is an optimization problem that aims to minimize or maximize a goal using a set of resources under specified constraints. Some examples:
+\begin{itemize}[label=\bullet]
+\item Minimizing travel time on a cyclic path to visit a set of cities, visiting every city exactly once. This is widely known as the traveling salesman problem, for short TSP\footnote{\url{https://en.wikipedia.org/wiki/Travelling_salesman_problem}}.
+\item Arranging \(n\) queens on an \(n \times n\) chessboard so that no queen can eat any other queen.
+\item Assigning talks of a conference each to a time slot and a room so that several constraints are satisfied such as no overlapping, preferred rooms for some speakers, etc.
+\item Assigning lectures to a room and a period in a weekly timetable. This is the problem that we aim to solve in this project.
+\end{itemize}
+Planning problems are in general NP-hard or NP-complete. For most of these problems, a brute force approach doesn't work except for very small instances. Therefore, it is common to use meta-heuristic algorithms to find an approximate solution which is good enough. Finding the best solution is usually not worth the computational effort needed, and approximate solutions are used instead.
 
 %_______________________________________________________________________________
 \section{OptaPlanner\label{sec:optaplanner}}
@@ -299,6 +306,7 @@ end
 %_______________________________________________________________________________
 \section{Solver architecture\label{sec:solver}}
 The solver (implemented in \cod{solver.SchedulerApp}) exposes a method \cod{solve(s: Schedule): Schedule} which expects a schedule with uninitialized lectures (no room or period assigned) or partially initialized lectures (if a lecture is locked, it \emph{must} have both a period and a room already assigned). Of course, the input data needs to be consistent: for example, no initialized lecture must be assigned to a room or a period that do not exist.\par
+The solver is configured to run a construction heuristic phase which uses the First Fit Decreasing heuristic. The following two phases, which are local search phases, use Late Acceptance and Simulated Annealing.
 The output is again a schedule, with all lectures assigned to a room and a period.\par
 Both input and output objects of type \cod{Schedule} refer to the \cod{domain} implementation used by the solver, which uses simple syntax often similar to Java.
 
@@ -307,24 +315,25 @@ Both input and output objects of type \cod{Schedule} refer to the \cod{domain} i
 As said, the solver lives on the back end, and it is available via a GraphQL endpoint. The server is implemented in Scala using Akka HTTP, and has one single endpoint: both \cod{/} and \cod{/graphql} are ways to access it.\par
 The server stores (during runtime, there is no persistence) all courses, buildings, rooms, as well as a map that stores created schedules by ID. The ID of a Schedule is computed based on the courses and rooms chosen for scheduling.\par
 All of this is stored as instances of Scala classes of the \cod{model} implementation, which are different from the classes used by the solver. The server in fact contains a class \cod{SchedulerRepo} which is responsible for the conversion between the two models when dealing with the solver.\par
-The GraphQL interface provides queries and mutations, and they are listed in Table \ref{tab:graphql}.
+The GraphQL interface provides queries and mutations, and they are listed in Table \ref{tab:graphql}.\par
 \begin{table}[h]
 \begin{tabularx}{\textwidth}{|l|X|}\hline
-\multirow{2}{*}{\cod{query}} & \cod{buildings: [Building]} \\
-& \cod{rooms: [Room]} \\
-& \cod{courses: [Course]} \\
-& \cod{semesters: [Semester]} \\
-& \cod{plannerCourses: [Course]} \\
-& \cod{plannerRooms: [Room]} \\
-& \cod{plannerSchedule(id: Int): Schedule} \\
-& \cod{plannerSchedules: [Schedule]} \\\hline
-\multirow{2}{*}{\cod{mutation}} & \cod{createSchedule(name: String): Schedule} \\
-& \cod{refineSchedule(id: Int): Schedule} \\
-& \cod{editLecture(id: Int, } \\
-& \qquad \cod{lectureArg: LectureInput): Lecture} \\\hline
+\multirow{2}{*}{\cod{query}} & \cod{buildings: [Building!]!} \\
+& \cod{rooms: [Room!]!} \\
+& \cod{courses: [Course!]!} \\
+& \cod{semesters: [Semester!]!} \\
+& \cod{plannerCourses: [Course!]!} \\
+& \cod{plannerRooms: [Room!]!} \\
+& \cod{plannerSchedule(id: Int!): Schedule} \\
+& \cod{plannerSchedules: [Schedule!]!} \\\hline
+\multirow{2}{*}{\cod{mutation}} & \cod{createSchedule(name: String!): Schedule} \\
+& \cod{refineSchedule(id: Int!): Schedule} \\
+& \cod{editLecture(id: Int!lectureArg: LectureInput!): Lecture} \\\hline
 \end{tabularx}
 \caption{GraphQL Schema exposed by the endpoint\label{tab:graphql}}
 \end{table}
+The table shows what is called a GraphQL Schema. Before the column we have the field name, after the column we have the field \cod{Type}. The exclamation mark means that the field is not nullable, and the square brackets indicate an array type.\par
+For more information about GraphQL, see Appendix \ref{appendix:graphql}.
 
 %_______________________________________________________________________________
 \section{Web application UI\label{sec:polymer}}
@@ -360,22 +369,95 @@ However, if it was modified, for example if a some lectures were moved and locke
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion}
-
+The implemented solver produces good results which are comparable to those produced by the Dean's office, but in a much shorter time.\par
+The application allows the user to create a schedule for a previously determined set of courses and rooms. The user can then visualize the solution, modify it and ask the solver to refine it. [...]
 
 %_______________________________________________________________________________
 \section{Evaluation}
-During development, we tested the solver using as problem instance the data for the spring semester of the year 2018 of the Bachelor program of the Faculty of Informatics at USI\footnote{\url{http://www.inf.usi.ch}}. The problem instance features 3 semesters, with a total of 14 courses. The number of lectures is 70, and they need to be scheduled on a school week which counts 40 periods (8 time slots per day). As available rooms we used all the rooms of the Informatics Building, so 8 rooms, although realistically.
+During development, we tested the solver using as problem instance the data for the spring semester of the year 2018 of the Bachelor program of the Faculty of Informatics at USI\footnote{\url{http://www.inf.usi.ch}}. The problem instance features 3 semesters, with a total of 14 courses. The number of lectures is 70, and they need to be scheduled on a school week which counts 40 periods (8 time slots per day). As available rooms we used all the rooms of the Informatics Building, so 8 rooms.\par
+The resulting schedules are produced in about 7 seconds, and are somewhat similar to the real timetables that are being used in the current semester. While the found solution does not violate any hard constraint, some soft constraints are violated, such as semester room stability and semester compactness (see Section \ref{sec:problem}).\par
+Results are available in Appendix \ref{appendix:results}.
 
 %_______________________________________________________________________________
 \section{Future work}
+The web application allows users to create a schedule for a given set of rooms and courses, with predefined unavailable periods. As a future work, the UI can be improved to enable the selection of specific courses, rooms, and other constraints.\par
+Other possible extensions include approving a suitable schedule and publishing it to the official University calendar. This calendar may offer different ways to aggregate the events such as by room, instructor, user, or by day.\par
+The calendar could also be augmented with the possibility to add non-recurring events such as seminars or conferences.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%\appendix
+\appendix
 %\chapter{OptaPlanner\label{appendix:optaplanner}}
 %This is the OptaPlanner appendix...
 
-%\chapter{GraphQL\label{appendix:graphql}}
+\chapter{GraphQL\label{appendix:graphql}}
+This appendix gives some examples of queries and responses using the schema defined in Section \ref{sec:graphql}.\par
+To query for all buildings with their name and all the rooms inside them, each with name and capacity, we would use this query:
+\begin{lstlisting}
+query {
+  buildings {
+    name
+    rooms {
+      name
+      capacity
+    }
+  }
+}
+\end{lstlisting}
+The result of this query would be this (reduced):
+\begin{lstlisting}[language=java]
+{
+  "data": {
+    "buildings": [
+      {
+        "name": "Red Building",
+        "rooms": [
+          {
+            "name": "A-11",
+            "capacity": 165
+          }, ...
+        ]
+      }, ...
+    ]
+  }
+}
+\end{lstlisting}
+
+
+
+\chapter{Results\label{appendix:results}}
+TODO: should the table go sideways and on a new page? Should I really show 6 tables (one per semester, both real and from solver)?\ppar
+This appendix shows the results produced by the solver, followed by the real schedule that is being used in the spring semester of 2018 for the Bachelor of Informatics at USI.
+
+%\begin{table}[h]
+%\begin{tabularx}{\textwidth}{|r|X|X|X|X|X|}\hline\hline
+%\textbf{Time} & \textbf{Mon} & \textbf{Tue} & \textbf{Wed} & \textbf{Thu} & \textbf{Fri} \\\hline\hline
+%08:30 & L & L & L & L & L \\\hline
+%09:30 & L & L & L & L & L \\\hline
+%10:30 & L & L & L & L & L \\\hline
+%11:30 & L & L & L & L & L \\\hline\hline
+%13:30 & L & L & L & L & L \\\hline
+%14:30 & L & L & L & L & L \\\hline
+%15:30 & L & L & L & L & L \\\hline
+%16:30 & L & L & L & L & L \\\hline
+%\end{tabularx}
+%\caption{Bachelor 2nd semester produced by the solver\label{tab:schedulerBSc2}}
+%\end{table}
+
+\begin{table}[h]
+\begin{tabularx}{\textwidth}{|r|X|X|X|X|X|}\hline\hline
+\textbf{Time} & \textbf{Mon} & \textbf{Tue} & \textbf{Wed} & \textbf{Thu} & \textbf{Fri} \\\hline\hline
+08:30 & Programming Fundamentals 2 in SI-006 & L & L & L & L \\\hline
+09:30 & L & L & L & L & L \\\hline
+10:30 & L & L & L & L & L \\\hline
+11:30 & L & L & L & L & L \\\hline\hline
+13:30 & L & L & L & L & L \\\hline
+14:30 & L & L & L & L & L \\\hline
+15:30 & L & L & L & L & L \\\hline
+16:30 & L & L & L & L & L \\\hline
+\end{tabularx}
+\caption{Bachelor 2nd semester produced by the solver\label{tab:schedulerBSc2}}
+\end{table}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
