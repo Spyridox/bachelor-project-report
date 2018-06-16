@@ -12,8 +12,12 @@
 \usepackage{cite}
 \usepackage{appendix}
 \usepackage{tabularx}
+\usepackage{capt-of}
 
 \usepackage{ragged2e}
+\usepackage{lscape}
+
+\usepackage{parcolumns}
 
 \usepackage{rotating}
 \usepackage[bookmarks,pdfencoding=unicode,colorlinks=true,citecolor=blue,linkcolor=black,urlcolor=blue]{hyperref}
@@ -43,7 +47,7 @@
 % Code
 \usepackage[procnames]{listings}
 \lstset{ %
-	aboveskip={-0.2\baselineskip},			% space before box
+	aboveskip={-0.2\baselineskip},		% space before box
     backgroundcolor=\color{white},		% choose the background color
     basicstyle=\footnotesize\ttfamily,	% the size of the code
     breakatwhitespace=false,			% if automatic breaks happen at whitespace
@@ -108,7 +112,8 @@
 \begin{titlepage}
 \begin{center}
 ~\\[2cm]
-\includegraphics[width=0.5\textwidth]{logo}\\[3.5cm]
+
+\includegraphics[height=3cm]{USI_INF_logo}\qquad\includegraphics[height=3cm]{USI_logo}\\[3.5cm]
 \hrule height 1pt
 \vspace{5mm}
 {\Huge University timetable scheduling}
@@ -132,7 +137,7 @@
 Creating and managing timetables of courses is an issue for many institutions because of the various constraints that need to be respected in the planning.
 This is an even harder problem if the data needed to describe the planning problem and its constraints is not well curated and stored in several different places, a situation that often leads to a long and tedious manual work in creating the timetables.
 In this project, we automate the process by means of state of the art tools to solve planning problems.
-We describe the design and implementation of a web application that offers an automated timetable creator wrapped in a user friendly web interface.
+We describe the design and implementation of a web application that offers an automated timetable creator wrapped in a user-friendly web interface.
 
 \newpage
 
@@ -148,7 +153,7 @@ Once a viable schedule is created, it is often necessary to change some details,
 
 %_______________________________________________________________________________
 \section{Problem}
-School timetabling is an NP hard planning problem\cite{CLRS}. The problem consists in scheduling a set of lectures on a weekly timetable. A single lecture can vary on two variables, which are period (identifying a specific slot during the week) and room.\par
+School timetabling is an NP-hard planning problem\cite{CLRS}. The problem consists in scheduling a set of lectures on a weekly timetable. A single lecture can vary on two variables, which are period (identifying a specific slot during the week) and room.\par
 The search space is huge; we can calculate it using a simple formula\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-docs/html\_single/index.html\#searchSpaceSize}}:
 \[
 	(p \times r)^l
@@ -188,21 +193,22 @@ A planning problem\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-
 \item Assigning talks of a conference each to a time slot and a room so that several constraints are satisfied such as no overlapping, preferred rooms for some speakers, etc.
 \item Assigning lectures to a room and a period in a weekly timetable. This is the problem that we aim to solve in this project.
 \end{itemize}
-Planning problems are in general NP-hard or NP-complete. For most of these problems, a brute force approach doesn't work except for very small instances. Therefore, it is common to use meta-heuristic algorithms to find an approximate solution which is good enough. Finding the best solution is usually not worth the computational effort needed, and approximate solutions are used instead.
+Planning problems are in general NP-hard or NP-complete. For most of these problems, a brute force approach does not work except for very small instances. Therefore, it is common to use metaheuristic algorithms\footnote{\url{https://en.wikipedia.org/wiki/Metaheuristic}} to find an approximate solution which is good enough. Metaheuristic algorithms make few assumptions and have little information about the problem they're trying to solve; because of this, they can be generalized for many different problems. Some metaheuristic algorithms also use some form of stochastic optimization. These algorithms do not guarantee that the optimal solution(s) can be found, rather they usually find sufficiently good solutions. \par
+Finding the best solution is usually not worth the computational effort needed, and approximate solutions are used instead.
 
 %_______________________________________________________________________________
 \section{OptaPlanner\label{sec:optaplanner}}
 OptaPlanner is a constraint solver which can solve planning problems (such as the ones described in Section \ref{sec:planning}) given a description of the solution of the problem together with a mechanism to compute its score. The solution contains a list of planning entities (in our case the lectures) with customizable variables. The solver optimizes the score of the solution by modifying the values of the variables. Finally, problem facts specify the constant aspects of each problem instance (e.g., courses, rooms).\par
-The library provides an detailed guide on how to implement a solver. The solver can be configured to choose different construction heuristics (such as First Fit, First Fit Decreasing, Cheapest Insertion, etc.) in the first phase of solving and different algorithms for the local search phase. Local search algorithms include Simulated Annealing, Tabu Search, and can be combined for increased efficacy.\par
+The library provides a detailed guide on how to implement a solver. The solver can be configured to choose different construction heuristics (such as First Fit, First Fit Decreasing, Cheapest Insertion, etc.\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-docs/html_single/index.html\#constructionHeuristics}}) in the first phase of solving, which consists in creating an initial solution. This initial solution doesn't have to be optimal, and not even feasible, but construction heuristics try to get the best possible outcome in a very short time. These algorithms are usually greedy and usually run in polynomial time.\par
+Different algorithms can be configured for the local search phase, which starts with an existing solution and tries to optimize it using local moves. Local search algorithms include Simulated Annealing\cite[p. 125]{AI}, Tabu Search\cite[p. 154]{AI}, and can be combined for increased efficacy.\par
 It is possible to add a filter class for the planning entities, which excludes some of the entities from planning (from being modified); in our case, this is perfect to exclude locked lectures during refinement.\par
-Other mechanisms are available, such as classes to assign a difficulty value to planning entities (so that harder entities can be initialised first during the construction heuristic phase) or to sort planning variables by weight.\par
-%For more information on OptaPlanner, see appendix \ref{appendix:optaplanner}.
+Other mechanisms are available, such as classes to assign a difficulty value to planning entities (so that harder entities can be initialized first during the construction heuristic phase) or to sort planning variables by weight.\par
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Approach}
 
-This chapter illustrates the main part of the approach, that is the implementation of the application. Section \ref{sec:problem} defines the course timetabling planning problem on a conceptual level. Section \ref{sec:technologies} gives an overview of the chosen technologies, explaining the architecture and the role of each part. Section \ref{sec:domain} describes the modelling of the problem domain to be used with the constraint solver, OptaPlanner. Section \ref{sec:constraints} examines how the constraints have been included in the score calculation. Section \ref{sec:solver} provides a brief description of the wrapper of the solver on the server side. Section \ref{sec:graphql} depicts the server endpoint interface that allows the client side to interact with the solver. Finally, section \ref{sec:polymer} describes the implementation of the web application demo.
+This chapter illustrates the core of the approach. Section \ref{sec:problem} defines the course timetabling planning problem on a conceptual level. Section \ref{sec:technologies} gives an overview of the chosen technologies, explaining the architecture and the role of each part. Section \ref{sec:domain} describes the modelling of the problem domain to be used with the constraint solver, OptaPlanner. Section \ref{sec:constraints} examines how the constraints have been included in the score calculation. Section \ref{sec:solver} provides a brief description of the wrapper of the solver on the server side. Section \ref{sec:graphql} depicts the server endpoint interface that allows the client side to interact with the solver. Finally, section \ref{sec:polymer} describes the implementation of the web application demo.
 
 %_______________________________________________________________________________
 \section{Problem definition\label{sec:problem}}
@@ -215,8 +221,10 @@ the minimum number of days these lectures should be spread out on, and the numbe
 \item a list of rooms: Each room has a name and a capacity.
 \end{itemize}
 
-A solution consists of a list of lectures, each with an assigned room and a period, representing a weekly occurrence of a course in the schedule. Each solution has a score, which is calculated according to set weights related to the constraints. The score is separated in two parts (or levels): a hard score and a soft score. If a solution \(A\) has a worse hard score than another solution \(B\), then \(A\) is worse than \(B\), regardless of what the soft scores are. The hard score relates to hard constraints, while the soft score relates to soft constraints.\par
-Hard constraints usually model physical limitations; in our case there are five, and we list them in Table \ref{tab:hard}.
+A solution consists of a list of lectures, each with an assigned room and a period, representing a weekly occurrence of a course in the schedule.\par
+The problem definition also includes a list of constraints that the solution should satisfy. The constraints can be separated into two categories: hard constraints, which need to be satisfied in order for the solution to be feasible, and soft constraints, which do not necessarily need to be satisfied.\par
+Hard constraints usually model physical limitations; soft constraints model limitations which do not violate physical reality but which satisfy specific preferences about how the solution should be.\par
+In our case there are five hard constraints and four soft constraints, and we list them in Table \ref{tab:hard} and Table \ref{tab:soft}.\par
 \begin{table}[h!]
 \begin{tabularx}{\textwidth}{|>{\hsize=.6\hsize\linewidth=\hsize\RaggedRight}X|
 >{\hsize=1.4\hsize\linewidth=\hsize}X|}\hline
@@ -229,22 +237,23 @@ Unavailable period  & A specific lecture must not be assigned to a specific peri
 \end{tabularx}
 \caption{Hard constraints \label{tab:hard}}
 \end{table}
-
-Soft constraints model limitations which do not violate physical reality but which satisfy specific preferences about how the solution should be. Our model has four soft constraint, and we list them in Table \ref{tab:soft}.
 \begin{table}[h!]
 \begin{tabularx}{\textwidth}{|>{\hsize=.6\hsize\linewidth=\hsize\RaggedRight}X|
 >{\hsize=1.4\hsize\linewidth=\hsize}X|}\hline
-Minimum working days & Lectures of the same course should be spread out into a minimum number of days\\\hline
-Semester compactness & Lectures belonging to the same curriculum should be adjacent to each other (so in consecutive periods if they are on the same day)\\\hline
-Room stability       & Lectures of the same course (and possibly even those of the same semester) should be assigned to the same room\\\hline
-Lecture pairs        & Lectures of the same course should be scheduled in blocks of two\\\hline
+Minimum working days & Lectures of the same course should be spread out into a minimum number of days.\\\hline
+Semester compactness & Lectures belonging to the same curriculum should be adjacent to each other (so in consecutive periods if they are on the same day).\\\hline
+Room stability       & Lectures of the same course (and possibly even those of the same semester) should be assigned to the same room.\\\hline
+Lecture pairs        & Lectures of the same course should be scheduled in blocks of two.\\\hline
 %Daily workload       & Every day should have a similar number of lectures (avoid days with few and full days)\\\hline
 %Course weekly span   & Courses with more than one minimum different days required should not have lectures on consecutive days\\\hline
 \end{tabularx}
 \caption{Soft constraints \label{tab:soft}}
 \end{table}
 %\newpage%TODO:REMOVE
-Each constraint has an associated value which influences the score. In our case, all values are negative, so the highest score possible is \cod{0hard/0soft}. The way constraints are associated with scores can vary. For example, if the room capacity constraint is violated, each student above the capacity could count as 1 point of penalty, or we could make each student count 2, or use a standard value of 10 points of penalty, regardless of how much the room is over capacity.
+Each constraint has an associated penalty value which is important to compute the score of a solution, often also called \emph{fitness}.\par
+In our case, all penalty values are negative, so the highest possible score is \cod{0hard/0soft} (where the hard score relates to hard constraints and the soft score relates to soft constraints).\par
+The way that penalty values for each constraint are decided can vary. For example, if the room capacity constraint is violated, each student above the capacity could count as 1 point of penalty, or we could make each student count 2, or use a standard value of 10 points of penalty, regardless of how much the room is over capacity.\par
+The score of two solutions is compared in order: If a solution \(A\) has a worse hard score than another solution \(B\), then \(A\) is worse than \(B\), regardless of what the soft scores are.
 
 %_______________________________________________________________________________
 \section{Technologies\label{sec:technologies}}
@@ -255,27 +264,27 @@ The client side is implemented as a Polymer 2.x application (with TypeScript ins
 %_______________________________________________________________________________
 \section{Domain model for OptaPlanner\label{sec:domain}}
 We modelled the problem domain according to what OptaPlanner expects.\par
-The implementation is done in Scala, although for some features we had to use Java syntax; it is similar to the existing Java implementation available in the \cod{curriculumcourse} program available in the OptaPlanner examples\footnote{\url{https://github.com/kiegroup/optaplanner/tree/master/optaplanner-examples}}.\par
-The main solution class, called \cod{Schedule}, contains all the lists of all problem facts (\cod{Period}s, \cod{Day}s, \cod{TimeSlot}s, \cod{Semester}s, \cod{Instructor}s, \cod{Room}s, \cod{Course}s, \cod{UnavailablePeriod}s), the list of planning entities (\cod{Lecture}) and the score (\cod{HardSoftScore}).\par
-The \cod{Lecture} class implements a Planning Entity, which is what the solver can mutate in order to improve solutions. The two fields that a \cod{Lecture} can mutate of are \cod{period} and \cod{room} (of type \cod{Period} and \cod{Room}, respectively).\par
-However, if a the \cod{locked} field of the lecture is set to \cod{true}, the solver ignores that \cod{Lecture} and only varies the unlocked ones. The score still takes into account all lectures, regardless of their locked value. It is important to say that a \cod{Lecture} that is locked \emph{must} have a non-null value for both its \cod{room} and \cod{period}.\par
-The diagram (Figure \ref{fig:domainUML}) representing the problem shows the solution class (\cod{Schedule}) in green, the planning entity (\cod{Lecture}) in red and the problem facts in blue. Only the relevant fields are shown.\par
+The implementation is done in Scala, although for some features we had to use Java syntax; it is similar to the existing Java implementation available in the \cod{curriculumcourse} folder available in the OptaPlanner examples\footnote{\url{https://github.com/kiegroup/optaplanner/tree/master/optaplanner-examples}}.\par
+The main solution class, called \cod{Schedule}, contains all the lists of all problem facts (\cod{Period}s, \cod{Day}s, \cod{TimeSlot}s, \cod{Semester}s, \cod{Instructor}s, \cod{Room}s, \cod{Course}s, \cod{UnavailablePeriod}s), the list of planning entities (\cod{Lecture}s) and the current solution score (\cod{HardSoftScore}).\par
+The diagram (Figure \ref{fig:domainUML}) representing the problem shows the solution class (\cod{Schedule}) in green, the planning entity (\cod{Lecture}) in red and the problem facts in blue. As said, the \cod{Schedule} class contains lists of all lectures and all problem facts; this is not shown explicitly on the diagram. Only the relevant fields are shown.\par
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{img/domainUML.pdf}
 \caption{Class diagram of the domain model\label{fig:domainUML}}
 \end{figure}
-%To know more about the inner workings of OptaPlanner, see appendix \ref{appendix:optaplanner}.
+The \cod{Lecture} class implements a Planning Entity, which is what the solver can mutate in order to improve solutions. The two fields that a \cod{Lecture} can mutate over are \cod{period} and \cod{room} (of type \cod{Period} and \cod{Room}, respectively).\par
+However, if the \cod{locked} field of the lecture is set to \cod{true}, the solver ignores that \cod{Lecture} and only varies the unlocked ones. The score still takes into account all lectures, regardless of their locked value. It is important to say that a \cod{Lecture} that is locked \emph{must} have a non-null value for both its \cod{room} and \cod{period} (i.e. it must be already initialized).\par
 
 %_______________________________________________________________________________
 \section{Constraints\label{sec:constraints}}
 The constraints are of two kinds, hard constraints and soft constraints, as described in Section \ref{sec:problem}.\par
-As a rule, any solution that violates any hard constraint is unusable, since hard constraints model physical limitations (such as the impossibility for an instructor to teach two lectures at the same time).\par
+As a rule, any solution that violates any hard constraint is unfeasible, since hard constraints model physical limitations (such as the impossibility for an instructor to teach two lectures at the same time).\par
 To compute the score we need to take into account all constraint violations, so we need to iterate over all lectures and combine them with data from courses, rooms and unavailable periods.\par
 A simple way to do this would be to accumulate constraint violations while iterating over all lectures combined with the other data. The problem with this approach is that the score needs to be calculated every time a new solution is created by the solver, i.e. many times per second, because the solver can mutate the solution very fast by just swapping two lectures or moving one single lecture.\par
 It makes much more sense, from an efficiency point of view,  to remember which constraint violations did not change, and to just recompute the score with respect to the moved lecture (or swapped lectures).\par
 To do this, we must rely heavily on maps, and the implementation can become very difficult to understand and to maintain.\par
-Fortunately, OptaPlanner supports Drools, which is an engine that can automatically perform incremental score calculation given some rules. Each constraint is described as one or more rules. An example of a rule is available in Figure \ref{fig:rule}.\par
+Fortunately, OptaPlanner supports Drools\footnote{\url{https://www.drools.org/}}, which is an engine that can automatically perform incremental score calculation given some rules. Each constraint is described as one or more rules.\par
+An example of a rule is available in Figure \ref{fig:rule}, which implements the room capacity constraint (see Section \ref{sec:problem}. The \cod{when} part describes the condition, which is matched when the boolean statements are true (\cod{room == \$room} and \cod{course.studentSize > \$capacity}); the condition is applied to all combinations of rooms and lectures. The \cod{then} part applies the penalty (which is computed as the number of students that are above the capacity of the room), to the \cod{Hard} part of the global score.\par
 For most constraints it was possible to use the existing rules implemented in the OptaPlanner example, while for some others we had to apply some changes (we transformed the room capacity constraint into a hard constraint) or write the rule from the ground up (for the lecture pairs constraint; see Section \ref{sec:problem}).
 
 \begin{figure}[h]
@@ -324,7 +333,8 @@ The GraphQL interface provides queries and mutations, and they are listed in Tab
 & \cod{semesters: [Semester!]!} \\
 & \cod{plannerCourses: [Course!]!} \\
 & \cod{plannerRooms: [Room!]!} \\
-& \cod{plannerSchedule(id: Int!): Schedule} \\
+& \cod{plannerScheduleById(id: Int!): Schedule} \\
+& \cod{plannerScheduleByName(name: String!): Schedule} \\
 & \cod{plannerSchedules: [Schedule!]!} \\\hline
 \multirow{2}{*}{\cod{mutation}} & \cod{createSchedule(name: String!): Schedule} \\
 & \cod{refineSchedule(id: Int!): Schedule} \\
@@ -333,67 +343,11 @@ The GraphQL interface provides queries and mutations, and they are listed in Tab
 \caption{GraphQL Schema exposed by the endpoint\label{tab:graphql}}
 \end{table}
 The table shows what is called a GraphQL Schema. Before the column we have the field name, after the column we have the field \cod{Type}. The exclamation mark means that the field is not nullable, and the square brackets indicate an array type.\par
-For more information about GraphQL, see Appendix \ref{appendix:graphql}.
-
-%_______________________________________________________________________________
-\section{Web application UI\label{sec:polymer}}
-We chose Polymer as a library to develop the front-end interface to use the solver.\par
-The main page features two tabs: the first tab shows a list of buildings, and the plan was to show calendars with real events for every room once a building is opened. This idea was put aside to focus on implementing the functionalities of the second tab, which is the schedule creator.\par
-The schedule creator shows a list of created schedules, starting with none. An ``add'' button on the bottom right can be used to open a page that shows the list of courses and rooms selected for scheduling. As of writing, it is not possible to change these selections, so it is possible to create just one of schedule, the one that uses the rooms and courses that are pre selected at server startup (for demonstrative purposes).\par
-Creating a schedule is simple: it is sufficient to enter a name and click ``create''.\par
-The home of the schedule creator can be seen in figure \ref{fig:creator}.
+We follow with an example of a GraphQL query to retrieve all buildings with their name and all the rooms inside them, each with name and capacity. We also show part of the result received from the server; note that the structure of the response matches the one of the query.\par
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=\textwidth]{home.png}
-\caption{Home of the planner \label{fig:creator}}
-\end{figure}
-
-By clicking on a schedule, a new view opens; on this view, the schedule is shown as a weekly timetable, separated by semester. If the schedule is the direct result of the solver, it is not possible to refine it, because the result would just be the same (see Figure \ref{fig:refined}). We call such a schedule ``refined''.\par
-
-\begin{figure}[h]
-\centering
-\includegraphics[width=\textwidth]{refined.png}
-\caption{A refined schedule \label{fig:refined}}
-\end{figure}
-
-However, if it was modified, for example if a some lectures were moved and locked, it is possible to click the ``refine'' button (see Figure \ref{fig:notrefined}). This starts the solver on the back end using the already existing schedule; only locked lectures are preserved in place.\par
-
-\begin{figure}[h]
-\centering
-\includegraphics[width=\textwidth]{not_refined.png}
-\caption{A non refined schedule \label{fig:notrefined}}
-\end{figure}
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Conclusion}
-The implemented solver produces good results which are comparable to those produced by the Dean's office, but in a much shorter time.\par
-The application allows the user to create a schedule for a previously determined set of courses and rooms. The user can then visualize the solution, modify it and ask the solver to refine it. [...]
-
-%_______________________________________________________________________________
-\section{Evaluation}
-During development, we tested the solver using as problem instance the data for the spring semester of the year 2018 of the Bachelor program of the Faculty of Informatics at USI\footnote{\url{http://www.inf.usi.ch}}. The problem instance features 3 semesters, with a total of 14 courses. The number of lectures is 70, and they need to be scheduled on a school week which counts 40 periods (8 time slots per day). As available rooms we used all the rooms of the Informatics Building, so 8 rooms.\par
-The resulting schedules are produced in about 7 seconds, and are somewhat similar to the real timetables that are being used in the current semester. While the found solution does not violate any hard constraint, some soft constraints are violated, such as semester room stability and semester compactness (see Section \ref{sec:problem}).\par
-Results are available in Appendix \ref{appendix:results}.
-
-%_______________________________________________________________________________
-\section{Future work}
-The web application allows users to create a schedule for a given set of rooms and courses, with predefined unavailable periods. As a future work, the UI can be improved to enable the selection of specific courses, rooms, and other constraints.\par
-Other possible extensions include approving a suitable schedule and publishing it to the official University calendar. This calendar may offer different ways to aggregate the events such as by room, instructor, user, or by day.\par
-The calendar could also be augmented with the possibility to add non-recurring events such as seminars or conferences.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\appendix
-%\chapter{OptaPlanner\label{appendix:optaplanner}}
-%This is the OptaPlanner appendix...
-
-\chapter{GraphQL\label{appendix:graphql}}
-This appendix gives some examples of queries and responses using the schema defined in Section \ref{sec:graphql}.\par
-To query for all buildings with their name and all the rooms inside them, each with name and capacity, we would use this query:
-\begin{lstlisting}
+\begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
 query {
   buildings {
     name
@@ -404,17 +358,42 @@ query {
   }
 }
 \end{lstlisting}
-The result of this query would be this (reduced):
-\begin{lstlisting}[language=java]
+\caption{GraphQL query\label{fig:graphqlquery}}
+\end{figure}
+
+\begin{figure}[h!]
+\centering
+\begin{lstlisting}[language=java,basicstyle=\scriptsize\ttfamily]
 {
   "data": {
     "buildings": [
       {
-        "name": "Red Building",
+        "name": "Informatics Building",
         "rooms": [
           {
-            "name": "A-11",
-            "capacity": 165
+            "name": "SI-003",
+            "capacity": 60
+          },
+          {
+            "name": "SI-004",
+            "capacity": 30
+          },
+          {
+            "name": "SI-006",
+            "capacity": 60
+          }, ...
+        ]
+      },
+      {
+        "name": "Main Building",
+        "rooms": [
+          {
+            "name": "CC-150",
+            "capacity": 30
+          },
+          {
+            "name": "CC-156",
+            "capacity": 30
           }, ...
         ]
       }, ...
@@ -422,12 +401,48 @@ The result of this query would be this (reduced):
   }
 }
 \end{lstlisting}
+\caption{Server response\label{fig:graphqlresponse}}
+\end{figure}
 
 
+%_______________________________________________________________________________
+\section{Web application UI\label{sec:polymer}}
+We chose Polymer as a library to develop the front-end interface to use the solver. The main page features two tabs: The first tab shows a list of buildings, and the plan was to show calendars with real events for every room once a building is opened. This idea is put aside to focus on implementing the functionalities of the second tab, which is the schedule creator.\par
+The schedule creator shows a list of created schedules, starting with none. An \emph{add} button on the bottom right can be used to open a page that shows the list of courses and rooms selected (on the back end) for scheduling.\par
+Creating a schedule is simple: it is sufficient to enter a name and click \emph{create}.\par
+The home of the schedule creator can be seen in Figure \ref{fig:creator}.
 
-\chapter{Results\label{appendix:results}}
-TODO: should the table go sideways and on a new page? Should I really show 6 tables (one per semester, both real and from solver)?\ppar
-This appendix shows the results produced by the solver, followed by the real schedule that is being used in the spring semester of 2018 for the Bachelor of Informatics at USI.
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{home.png}
+\caption{Home of the planner \label{fig:creator}}
+\end{figure}
+
+By clicking on a schedule, a new view opens; on this view, the schedule is shown as a weekly timetable, separated by semester. If the schedule is the direct result of the solver, it is not possible to refine it, because the result would just be the same (see Figure \ref{fig:refined}). We call such a schedule \emph{refined}.\par
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{refined.png}
+\caption{A refined schedule \label{fig:refined}}
+\end{figure}
+
+However, if it was modified, for example if some lectures were moved and locked, it is possible to click the \emph{refine} button (see Figure \ref{fig:notrefined}). This starts the solver on the back end using the already existing schedule; only locked lectures are preserved in place.\par
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{not_refined.png}
+\caption{A non refined schedule \label{fig:notrefined}}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Case study}
+During development, we tested the solver using as problem instance the data for the spring semester of the year 2018 of the Bachelor program of the Faculty of Informatics at USI\footnote{\url{http://www.inf.usi.ch}}. The problem instance features 3 semesters, with a total of 14 courses. The number of lectures is 70, and they need to be scheduled on a school week which counts 40 periods (8 time slots per day). As available rooms we used all the rooms of the Informatics Building, so 8 rooms.\par
+The resulting schedules are produced in about 7 seconds and are comparable to the real timetables that are being used in the current semester. While the found solution does not violate any hard constraint, some soft constraints are violated, such as semester room stability and semester compactness (see Section \ref{sec:problem}).\par
+We also observe that the solver is biased towards scheduling lectures in the first days of the week.\par
+In Table \ref{tab:scheduler_semester} and Table \ref{tab:real_semester} we show one semester of the results produced by the solver and the respective real semester from the official timetable.\par
+The main differences are in the rooms: The official timetable only uses one room (SI-008) while the scheduler used two (SI-003 and SI-008). The bias of the solver towards scheduling in the first days of the week is very visible in the afternoons.\par
+In the tables we omit the last two periods (15:30 and 16:30) because they are empty in both tables.
 
 %\begin{table}[h]
 %\begin{tabularx}{\textwidth}{|r|X|X|X|X|X|}\hline\hline
@@ -444,20 +459,71 @@ This appendix shows the results produced by the solver, followed by the real sch
 %\caption{Bachelor 2nd semester produced by the solver\label{tab:schedulerBSc2}}
 %\end{table}
 
+\def\mystrut(#1,#2){\vrule height #1 depth #2 width 0pt}
+\def\HHH{\mystrut(2ex,1ex)}
+
+\newcommand{\rr}[1]{\multicolumn{1}{l|}{\footnotesize{#1}}}
+
 \begin{table}[h]
 \begin{tabularx}{\textwidth}{|r|X|X|X|X|X|}\hline\hline
 \textbf{Time} & \textbf{Mon} & \textbf{Tue} & \textbf{Wed} & \textbf{Thu} & \textbf{Fri} \\\hline\hline
-08:30 & Programming Fundamentals 2 in SI-006 & L & L & L & L \\\hline
-09:30 & L & L & L & L & L \\\hline
-10:30 & L & L & L & L & L \\\hline
-11:30 & L & L & L & L & L \\\hline\hline
-13:30 & L & L & L & L & L \\\hline
-14:30 & L & L & L & L & L \\\hline
-15:30 & L & L & L & L & L \\\hline
-16:30 & L & L & L & L & L \\\hline
+08:30 & PF2 & PF2 & PF2 & LA & DS \\
+	  & \rr{SI-003} & \rr{SI-003} & \rr{SI-003} & \rr{SI-003} & \rr{SI-006} \\\hline
+09:30 & PF2 & PF2 & PF2 & LA & DS \\
+	  & \rr{SI-003} & \rr{SI-003} & \rr{SI-003} & \rr{SI-003} & \rr{SI-006} \\\hline
+10:30 & ADS & ADS & LA & DS & \\
+      & \rr{SI-003} & \rr{SI-003} & \rr{SI-003} & \rr{SI-006} & \\\hline
+11:30 & ADS & ADS & LA & DS & \\
+      & \rr{SI-003} & \rr{SI-003} & \rr{SI-003} & \rr{SI-006} & \\\hline\hline
+13:30 & SA2 & SA2 & & & \\
+      & \rr{SI-006} & \rr{SI-006} & & & \\\hline
+14:30 & SA2 & SA2 & & & \\
+      & \rr{SI-006} & \rr{SI-006} & & & \\\hline
 \end{tabularx}
-\caption{Bachelor 2nd semester produced by the solver\label{tab:schedulerBSc2}}
+\captionof{table}{Bachelor 2nd semester produced by the solver\label{tab:scheduler_semester}}
 \end{table}
+
+\begin{table}[h]
+\begin{tabularx}{\textwidth}{|r|X|X|X|X|X|}\hline\hline
+\textbf{Time} & \textbf{Mon} & \textbf{Tue} & \textbf{Wed} & \textbf{Thu} & \textbf{Fri} \\\hline\hline
+08:30 & LA & ADS & LA & ADS & \\
+	  & \rr{SI-008} & \rr{SI-008} & \rr{SI-008} & \rr{SI-008} & \\\hline
+09:30 & LA & ADS & LA & ADS & \\
+	  & \rr{SI-008} & \rr{SI-008} & \rr{SI-008} & \rr{SI-008} & \\\hline
+10:30 & PF2 & DS & PF2 & DS & PF2 \\
+      & \rr{SI-008} & \rr{SI-008} & \rr{SI-008} & \rr{SI-008} & \rr{SI-008} \\\hline
+11:30 & PF2 & DS & PF2 & DS & PF2 \\
+      & \rr{SI-008} & \rr{SI-008} & \rr{SI-008} & \rr{SI-008} & \rr{SI-008} \\\hline\hline
+13:30 & & SA2 & & SA2 & \\
+      & & \rr{SI-008} & & \rr{SI-008} & \\\hline
+14:30 & & SA2 & & SA2 & \\
+      & &\rr{SI-008} & & \rr{SI-008} & \\\hline
+\end{tabularx}
+\captionof{table}{Real Bachelor 2nd semester\label{tab:real_semester}}
+\end{table}
+
+\begin{table}[h]
+\begin{tabularx}{\textwidth}{l X}
+LA & Linear Algebra \\
+ADS & Algorithms \& Data Structures \\
+PF2 & Programming Fundamentals 2 \\
+DS & Discrete Structures \\
+SA2 & Software Atelier 2: Human-Computer Interaction \\
+\end{tabularx}
+\end{table}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Conclusion}
+The implemented solver produces good results which are comparable to those produced by the Dean's office, but in a much shorter time.\par
+The application allows the user to create a schedule for a previously determined set of courses and rooms. The user can then visualize the solution, modify it and ask the solver to refine it.
+
+%_______________________________________________________________________________
+\section{Future work}
+The web application allows users to create a schedule for a given set of rooms and courses, with predefined unavailable periods. As a future work, the UI can be improved to enable the selection of specific courses, rooms, and other constraints.\par
+Other possible extensions include approving a suitable schedule and publishing it to the official University calendar. This calendar may offer different ways to aggregate the events such as by room, instructor, user, or by day.\par
+The calendar could also be augmented with the possibility to add non-recurring events such as seminars or conferences.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
