@@ -159,7 +159,7 @@ The search space is huge; we can calculate it using a simple formula\footnote{\u
 	(p \times r)^l
 \]
 where \(p\) is the number of possible periods on the weekly timetable, \(r\) is the number of available rooms and \(l\) is the number of lectures that need to be scheduled.\par
-For example, take the spring semester of the Bachelor of Informatics at USI Lugano, which (at the time of writing) entails 14 courses, each with a specific number of lectures (calculated with respect to the ECTS weight). The total number of lectures of all courses is 70; the Faculty of Informatics has 7 rooms available, and a school week is of 40 periods (5 days, each with 8 time slots). We have:
+For example, the spring semester of the Bachelor of Informatics at USI Lugano, at the time of writing, entails 14 courses, each with a specific number of lectures (calculated with respect to the ECTS weight). The total number of lectures of all courses is 70; the Faculty of Informatics has 7 rooms available, and a school week is of 40 periods (5 days, each with 8 time slots). We have:
 \[
 	(p \times r)^l = (40\cdot7)^{70} = 280^{70} \approx 2\cdot10^{171}
 \]
@@ -168,7 +168,7 @@ Even with constraints in place, the search space remains very large. The search 
 %_______________________________________________________________________________
 \section{Goal}
 The goal of this project is to create a web application that automates the process of creating a school timetable.\par
-The web application is an interface to a constraint solver, which lives on the back end.\par
+The web application is an interface to a constraint solver, which is part of the back end.\par
 Given the problem data and a set of constraints, the solver computes a good solution and returns it as a list of lectures. The solution is proposed to the user, which can then customize it by moving lectures to preferred times or rooms and locking them in place. The customized solution can then be fed back to the solver which can refine it while keeping the locked lectures in place.
 
 %_______________________________________________________________________________
@@ -193,13 +193,13 @@ A planning problem\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-
 \item Assigning talks of a conference each to a time slot and a room so that several constraints are satisfied such as no overlapping, preferred rooms for some speakers, etc.
 \item Assigning lectures to a room and a period in a weekly timetable. This is the problem that we aim to solve in this project.
 \end{itemize}
-Planning problems are in general NP-hard or NP-complete. For most of these problems, a brute force approach does not work except for very small instances. Therefore, it is common to use metaheuristic algorithms\footnote{\url{https://en.wikipedia.org/wiki/Metaheuristic}} to find an approximate solution which is good enough. Metaheuristic algorithms make few assumptions and have little information about the problem they're trying to solve; because of this, they can be generalized for many different problems. Some metaheuristic algorithms also use some form of stochastic optimization. These algorithms do not guarantee that the optimal solution(s) can be found, rather they usually find sufficiently good solutions. \par
+Planning problems are in general NP-hard or NP-complete. For most of these problems, a brute force approach does not work except for very small instances. Therefore, it is common to use metaheuristic algorithms\footnote{\url{https://en.wikipedia.org/wiki/Metaheuristic}} to find an approximate solution which is good enough. Metaheuristic algorithms make few assumptions and have little information about the problem they are trying to solve; because of this, they can be generalized for many different problems. Some metaheuristic algorithms also use some form of stochastic optimization. These algorithms do not guarantee that the optimal solution(s) can be found, rather they usually find sufficiently good solutions. \par
 Finding the best solution is usually not worth the computational effort needed, and approximate solutions are used instead.
 
 %_______________________________________________________________________________
 \section{OptaPlanner\label{sec:optaplanner}}
 OptaPlanner is a constraint solver which can solve planning problems (such as the ones described in Section \ref{sec:planning}) given a description of the solution of the problem together with a mechanism to compute its score. The solution contains a list of planning entities (in our case the lectures) with customizable variables. The solver optimizes the score of the solution by modifying the values of the variables. Finally, problem facts specify the constant aspects of each problem instance (e.g., courses, rooms).\par
-The library provides a detailed guide on how to implement a solver. The solver can be configured to choose different construction heuristics (such as First Fit, First Fit Decreasing, Cheapest Insertion, etc.\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-docs/html_single/index.html\#constructionHeuristics}}) in the first phase of solving, which consists in creating an initial solution. This initial solution doesn't have to be optimal, and not even feasible, but construction heuristics try to get the best possible outcome in a very short time. These algorithms are usually greedy and usually run in polynomial time.\par
+The library provides a detailed guide on how to implement a solver. The solver can be configured to choose different construction heuristics (such as First Fit, First Fit Decreasing, Cheapest Insertion, etc.\footnote{\url{http://docs.optaplanner.org/latest/optaplanner-docs/html_single/index.html\#constructionHeuristics}}) in the first phase of solving, which consists in creating an initial solution. This initial solution does not have to be optimal, and not even feasible, but construction heuristics try to get the best possible outcome in a very short time. These algorithms are usually greedy and usually run in polynomial time.\par
 Different algorithms can be configured for the local search phase, which starts with an existing solution and tries to optimize it using local moves. Local search algorithms include Simulated Annealing\cite[p. 125]{AI}, Tabu Search\cite[p. 154]{AI}, and can be combined for increased efficacy.\par
 It is possible to add a filter class for the planning entities, which excludes some of the entities from planning (from being modified); in our case, this is perfect to exclude locked lectures during refinement.\par
 Other mechanisms are available, such as classes to assign a difficulty value to planning entities (so that harder entities can be initialized first during the construction heuristic phase) or to sort planning variables by weight.\par
@@ -258,7 +258,7 @@ The score of two solutions is compared in order: If a solution \(A\) has a worse
 %_______________________________________________________________________________
 \section{Technologies\label{sec:technologies}}
 The core solver implementation makes use of a state of the art library for solving planning problems called OptaPlanner.\par
-The server side of the web application is implemented in Scala, a relatively young general-purpose programming language, using Akka HTTP\footnote{\url{https://doc.akka.io/docs/akka-http/current/}}. It exposes an interface to in-memory data and to the solver using GraphQL, which is a query language that allows the user to retrieve data with high precision using a single request. GraphQL is an alternative to REST that allows the client to specify the structure of the requested data, avoiding the need for further requests. The GraphQL endpoint is also implemented in Scala using Sangria GraphQL\footnote{\url{http://sangria-graphql.org/}}.\par
+The server side of the web application is implemented in Scala, a relatively young general-purpose programming language, using Akka HTTP\footnote{\url{https://doc.akka.io/docs/akka-http/current/}}. It exposes an interface to the data and to the solver using GraphQL, which is a query language that allows the user to retrieve data with high specificity using a single request. GraphQL is an alternative to REST that allows the client to specify the structure of the requested data, avoiding the need for further requests. The GraphQL endpoint is also implemented in Scala using Sangria GraphQL\footnote{\url{http://sangria-graphql.org/}}.\par
 The client side is implemented as a Polymer 2.x application (with TypeScript instead of JavaScript), where Polymer is a library to build Web Components\footnote{\url{https://www.webcomponents.org/}}.
 
 %_______________________________________________________________________________
@@ -280,9 +280,9 @@ However, if the \cod{locked} field of the lecture is set to \cod{true}, the solv
 The constraints are of two kinds, hard constraints and soft constraints, as described in Section \ref{sec:problem}.\par
 As a rule, any solution that violates any hard constraint is unfeasible, since hard constraints model physical limitations (such as the impossibility for an instructor to teach two lectures at the same time).\par
 To compute the score we need to take into account all constraint violations, so we need to iterate over all lectures and combine them with data from courses, rooms and unavailable periods.\par
-A simple way to do this would be to accumulate constraint violations while iterating over all lectures combined with the other data. The problem with this approach is that the score needs to be calculated every time a new solution is created by the solver, i.e. many times per second, because the solver can mutate the solution very fast by just swapping two lectures or moving one single lecture.\par
-It makes much more sense, from an efficiency point of view,  to remember which constraint violations did not change, and to just recompute the score with respect to the moved lecture (or swapped lectures).\par
-To do this, we must rely heavily on maps, and the implementation can become very difficult to understand and to maintain.\par
+A simple way to do this would be to accumulate constraint violations while iterating over all lectures combined with the other data. The problem with this approach is that the score needs to be calculated every time a new solution is created by the solver, i.e., many times per second, since the solver can mutate the solution very fast by just swapping two lectures or moving one single lecture.\par
+From an efficiency point of view, it makes much more sense to remember which constraint violations did not change, and to just recompute the score with respect to the moved lecture (or swapped lectures).\par
+To do this, we must heavily rely on maps, and the implementation can become very difficult to understand and to maintain.\par
 Fortunately, OptaPlanner supports Drools\footnote{\url{https://www.drools.org/}}, which is an engine that can automatically perform incremental score calculation given some rules. Each constraint is described as one or more rules.\par
 An example of a rule is available in Figure \ref{fig:rule}, which implements the room capacity constraint (see Section \ref{sec:problem}. The \cod{when} part describes the condition, which is matched when the boolean statements are true (\cod{room == \$room} and \cod{course.studentSize > \$capacity}); the condition is applied to all combinations of rooms and lectures. The \cod{then} part applies the penalty (which is computed as the number of students that are above the capacity of the room), to the \cod{Hard} part of the global score.\par
 For most constraints it was possible to use the existing rules implemented in the OptaPlanner example, while for some others we had to apply some changes (we transformed the room capacity constraint into a hard constraint) or write the rule from the ground up (for the lecture pairs constraint; see Section \ref{sec:problem}).
@@ -418,7 +418,7 @@ The home of the schedule creator can be seen in Figure \ref{fig:creator}.
 \caption{Home of the planner \label{fig:creator}}
 \end{figure}
 
-By clicking on a schedule, a new view opens; on this view, the schedule is shown as a weekly timetable, separated by semester. If the schedule is the direct result of the solver, it is not possible to refine it, because the result would just be the same (see Figure \ref{fig:refined}). We call such a schedule \emph{refined}.\par
+By clicking on a schedule, a new view opens; This view shows the schedule as a weekly timetable, separated by semester. If the schedule is the direct result of the solver, it is not possible to refine it, because the result would just be the same (see Figure \ref{fig:refined}). We call such a schedule \emph{refined}.\par
 
 \begin{figure}[h]
 \centering
